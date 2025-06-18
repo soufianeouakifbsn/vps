@@ -23,10 +23,34 @@ sudo docker run -d --name n8n \
   --restart unless-stopped \
   n8nio/n8n
 
-# إعداد ngrok
+# تثبيت ngrok إذا لم يكن موجودًا
+if ! command -v ngrok &> /dev/null; then
+  echo "⬇️ تثبيت ngrok..."
+  wget -O ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+  sudo tar xvzf ngrok.tgz -C /usr/local/bin
+fi
+
+# إعداد ngrok لحساب n8n
 ngrok config add-authtoken 2N7U2BmqSbPX5ibsRPhpuyD8b1b_6CsuZXHCnLCrgHvqKvRCE
 
-# تشغيل النفق في الخلفية وتخزين الـ log
-nohup ngrok http --domain=repeatedly-positive-deer.ngrok-free.app 5678 > ~/ngrok_n8n.log 2>&1 &
+# إنشاء systemd service ل ngrok
+sudo bash -c 'cat > /etc/systemd/system/ngrok-n8n.service <<EOF
+[Unit]
+Description=Ngrok Tunnel for N8N
+After=network.target docker.service
+
+[Service]
+ExecStart=/usr/local/bin/ngrok http --domain=repeatedly-positive-deer.ngrok-free.app 5678
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF'
+
+# تفعيل الخدمة
+sudo systemctl daemon-reload
+sudo systemctl enable ngrok-n8n.service
+sudo systemctl start ngrok-n8n.service
 
 echo "✅ n8n يعمل الآن على: https://repeatedly-positive-deer.ngrok-free.app"
