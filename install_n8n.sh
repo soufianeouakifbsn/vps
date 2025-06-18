@@ -2,6 +2,11 @@
 
 echo "🚀 بدء تثبيت n8n وربطه بـ ngrok..."
 
+# 🧼 حذف الحاوية القديمة إن وُجدت
+echo "🧹 التحقق من وجود حاوية n8n قديمة..."
+sudo docker stop n8n 2>/dev/null || true
+sudo docker rm n8n 2>/dev/null || true
+
 # تثبيت Docker إذا لم يكن مثبتًا
 if ! command -v docker &> /dev/null; then
   echo "🔧 تثبيت Docker..."
