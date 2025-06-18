@@ -31,7 +31,7 @@ if ! command -v ngrok &> /dev/null; then
 fi
 
 # إعداد ngrok لحساب n8n
-ngrok config add-authtoken 2N7U2BmqSbPX5ibsRPhpuyD8b1b_6CsuZXHCnLCrgHvqKvRCE
+ngrok config add-authtoken xxxxxxxxxxxxxxxxxxxx
 
 # إنشاء systemd service ل ngrok
 sudo bash -c 'cat > /etc/systemd/system/ngrok-n8n.service <<EOF
@@ -53,4 +53,4 @@ sudo systemctl daemon-reload
 sudo systemctl enable ngrok-n8n.service
 sudo systemctl start ngrok-n8n.service
 
-echo "✅ n8n يعمل الآن على: https://repeatedly-positive-deer.ngrok-free.app"
+echo "✅ n8n يعمل الآن على: https://xxxxxx.ngrok-free.app"
