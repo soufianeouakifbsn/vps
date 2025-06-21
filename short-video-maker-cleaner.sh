@@ -46,7 +46,7 @@ docker pull $IMAGE_NAME
 # 7. تشغيل الحاوية من جديد (عدّل حسب حاجتك)
 echo "▶️ Starting fresh short-video-maker container..."
 docker run -d --name short-video-maker \
-  -p 3000:3000 \
+  -p 3123:3123 \
   $IMAGE_NAME
 
 # 8. عرض استخدام الرام بعد التنظيف
