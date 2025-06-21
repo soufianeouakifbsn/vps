@@ -24,7 +24,7 @@ if ! command -v ngrok &> /dev/null; then
 fi
 
 # إعداد ngrok لحساب SVM
-ngrok config add-authtoken 2N7U2BmqSbPX5ibsRPhpuyD8b1b_6CsuZXHCnLCrgHvqKvRCE
+ngrok config add-authtoken 2ydu6xnFE745us2CHwUkj3AAjUe_7QBXqRsTdNKYh76JJZfK2
 
 # إنشاء systemd service ل ngrok SVM
 sudo bash -c 'cat > /etc/systemd/system/ngrok-svm.service <<EOF
