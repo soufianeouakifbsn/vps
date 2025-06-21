@@ -13,7 +13,7 @@ fi
 sudo docker run -d --name short-video-maker \
   --restart unless-stopped \
   -p 3123:3123 \
-  -e PEXELS_API_KEY=xxxxxxxxxxxxxxxxxxxxxx \
+  -e PEXELS_API_KEY=FDrZIasw3qXF6eOCc0dafpZ9cJnN2FfAWi3xEn1mcHy9lqmLqpuIebwC \
   gyoridavid/short-video-maker:latest-tiny
 
 # تثبيت ngrok إذا لم يكن موجودًا
@@ -24,7 +24,7 @@ if ! command -v ngrok &> /dev/null; then
 fi
 
 # إعداد ngrok لحساب SVM
-ngrok config add-authtoken xxxxxxxxxxxxxxxxx
+ngrok config add-authtoken 2N7U2BmqSbPX5ibsRPhpuyD8b1b_6CsuZXHCnLCrgHvqKvRCE
 
 # إنشاء systemd service ل ngrok SVM
 sudo bash -c 'cat > /etc/systemd/system/ngrok-svm.service <<EOF
@@ -33,7 +33,7 @@ Description=Ngrok Tunnel for Short Video Maker
 After=network.target docker.service
 
 [Service]
-ExecStart=/usr/local/bin/ngrok http --domain=xxxxxxxxxx.ngrok-free.app 3123
+ExecStart=/usr/local/bin/ngrok http --domain=talented-fleet-monkfish.ngrok-free.app/ 3123
 Restart=always
 User=root
 
@@ -46,4 +46,4 @@ sudo systemctl daemon-reload
 sudo systemctl enable ngrok-svm.service
 sudo systemctl start ngrok-svm.service
 
-echo "✅ short-video-maker يعمل الآن على: https://xxxxxxxxxx.ngrok-free.app"
+echo "✅ short-video-maker يعمل الآن على: https://talented-fleet-monkfish.ngrok-free.app"
