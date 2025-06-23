@@ -33,7 +33,7 @@ Description=Ngrok Tunnel for Short Video Maker
 After=network.target docker.service
 
 [Service]
-ExecStart=/usr/local/bin/ngrok http --domain=talented-fleet-monkfish.ngrok-free.app/ 3123
+ExecStart=/usr/local/bin/ngrok http --domain=talented-fleet-monkfish.ngrok-free.app 3123
 Restart=always
 User=root
 
