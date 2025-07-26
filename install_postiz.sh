@@ -27,7 +27,7 @@ Description=Ngrok Tunnel for Postiz
 After=network.target docker.service
 
 [Service]
-ExecStart=/usr/local/bin/ngrok http --domain=jaybird-normal-publicly.ngrok-free.app 3000
+ExecStart=/usr/local/bin/ngrok http --domain=jaybird-normal-publicly.ngrok-free.app 5000
 Restart=always
 User=root
 
