@@ -26,7 +26,7 @@ Description=Ngrok Tunnel for Postiz
 After=network.target docker.service
 
 [Service]
-ExecStart=/usr/local/bin/ngrok http --domain=jaybird-normal-publicly.ngrok-free.app 5000
+ExecStart=/usr/local/bin/ngrok http --domain=jaybird-normal-publicly.ngrok-free.app 3000
 Restart=always
 User=root
 
@@ -74,7 +74,7 @@ services:
       - postiz-config:/config/
       - postiz-uploads:/uploads/
     ports:
-      - "5000:5000"
+      - "3000:3000"
     networks:
       - postiz-network
     depends_on:
