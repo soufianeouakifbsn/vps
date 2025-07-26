@@ -1,73 +1,92 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "🚀 بدء تثبيت Postiz وربطه بـ ngrok..."
+#############################################
+# Postiz + Docker Compose + ngrok installer #
+# + إنشاء حساب مسؤول تلقائي بعد التشغيل #
+#############################################
 
-# 🐳 التأكد من أن Docker مثبت
-if ! command -v docker &> /dev/null; then
-  echo "📦 تثبيت Docker..."
-  sudo apt update
-  sudo apt install -y docker.io docker-compose
-else
-  echo "✅ Docker موجود بالفعل"
+# ===[ إعدادات قابلة للتعديل ]===
+NGROK_DOMAIN="jaybird-normal-publicly.ngrok-free.app"
+NGROK_TOKEN="30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9"
+POSTIZ_DIR="/opt/postiz"
+POSTIZ_IMAGE="ghcr.io/gitroomhq/postiz-app:latest"
+POSTIZ_JWT_SECRET="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 64 || true)"
+POSTIZ_PORT="5000"
+
+# بيانات حساب المسؤول (غيرها حسب رغبتك)
+ADMIN_EMAIL="admin@example.com"
+ADMIN_USERNAME="admin"
+ADMIN_PASSWORD="admin123"
+
+echo "🚀 بدء تثبيت Postiz..."
+
+# ---------------------------------
+# 1) تثبيت Docker + Compose
+# ---------------------------------
+if ! command -v docker &>/dev/null; then
+  echo "📦 تثبيت Docker بالطريقة الرسمية..."
+  curl -fsSL https://get.docker.com -o get-docker.sh
+  sudo sh get-docker.sh
+  rm get-docker.sh
+  sudo usermod -aG docker "$USER"
+  newgrp docker <<EONG
+echo "✅ تم تفعيل مجموعة docker للمستخدم الحالي."
+EONG
 fi
 
-# 🌐 تثبيت ngrok إذا لم يكن مثبتًا
-if ! command -v ngrok &> /dev/null; then
+if ! docker compose version &>/dev/null && ! docker-compose version &>/dev/null; then
+  echo "🔧 تثبيت Docker Compose يدويًا..."
+  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
+  sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true
+fi
+
+# ---------------------------------
+# 2) تثبيت ngrok (إن لم يكن موجودًا)
+# ---------------------------------
+if ! command -v ngrok &>/dev/null; then
   echo "⬇️ تثبيت ngrok..."
-  wget -O ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
-  sudo tar xvzf ngrok.tgz -C /usr/local/bin
-  rm ngrok.tgz
-else
-  echo "✅ ngrok موجود بالفعل"
+  wget -O /tmp/ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+  sudo tar xvzf /tmp/ngrok.tgz -C /usr/local/bin
 fi
 
-# 🔐 إعداد ngrok لحساب Postiz
-ngrok config add-authtoken 30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9
+ngrok config add-authtoken "$NGROK_TOKEN"
 
-# 📁 إنشاء مجلد Postiz
-echo "📁 إنشاء مجلد ~/postiz..."
-mkdir -p ~/postiz
-cd ~/postiz
-echo "📍 المجلد الحالي: $(pwd)"
+# ---------------------------------
+# 3) تجهيز مجلد Postiz
+# ---------------------------------
+sudo mkdir -p "$POSTIZ_DIR"
+sudo chown -R "$USER:$USER" "$POSTIZ_DIR"
+cd "$POSTIZ_DIR"
 
-# 📝 إنشاء ملف docker-compose.yml
-cat > docker-compose.yml <<EOF
-version: '3.8'
-
+# ---------------------------------
+# 4) إنشاء ملف docker-compose.yml
+# ---------------------------------
+cat > docker-compose.yml <<'YAML'
 services:
   postiz:
-    image: ghcr.io/gitroomhq/postiz-app:v1.36.1-amd64
+    image: ghcr.io/gitroomhq/postiz-app:latest
     container_name: postiz
     restart: always
     environment:
-      # إعدادات URL الأساسية
-      MAIN_URL: "https://jaybird-normal-publicly.ngrok-free.app"
-      FRONTEND_URL: "https://jaybird-normal-publicly.ngrok-free.app"
-      NEXT_PUBLIC_BACKEND_URL: "https://jaybird-normal-publicly.ngrok-free.app/api"
-      
-      # إعدادات الأمان
-      JWT_SECRET: "postiz_jwt_secret_$(date +%s)_$(openssl rand -hex 16)"
-      NOT_SECURED: "true"
-      
-      # إعدادات قاعدة البيانات
-      DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
-      REDIS_URL: "redis://postiz-redis:6379"
+      MAIN_URL: "${MAIN_URL}"
+      FRONTEND_URL: "${FRONTEND_URL}"
+      NEXT_PUBLIC_BACKEND_URL: "${NEXT_PUBLIC_BACKEND_URL}"
+      JWT_SECRET: "${JWT_SECRET}"
+      DATABASE_URL: "${DATABASE_URL}"
+      REDIS_URL: "${REDIS_URL}"
       BACKEND_INTERNAL_URL: "http://localhost:3000"
-      
-      # إعدادات عامة
       IS_GENERAL: "true"
       DISABLE_REGISTRATION: "false"
-      
-      # إعدادات التخزين
       STORAGE_PROVIDER: "local"
       UPLOAD_DIRECTORY: "/uploads"
       NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
-      
     volumes:
       - postiz-config:/config/
       - postiz-uploads:/uploads/
     ports:
-      - "5000:5000"
+      - ${POSTIZ_PORT}:5000
     networks:
       - postiz-network
     depends_on:
@@ -95,7 +114,7 @@ services:
       retries: 3
 
   postiz-redis:
-    image: redis:7.2-alpine
+    image: redis:7.2
     container_name: postiz-redis
     restart: always
     healthcheck:
@@ -110,81 +129,85 @@ services:
 
 volumes:
   postgres-volume:
-    external: false
   postiz-redis-data:
-    external: false
   postiz-config:
-    external: false
   postiz-uploads:
-    external: false
 
 networks:
   postiz-network:
-    external: false
-EOF
+YAML
 
-# 🧹 إيقاف وحذف الحاويات القديمة إن وُجدت
-echo "🧹 تنظيف الحاويات القديمة..."
-sudo docker stop postiz postiz-postgres postiz-redis 2>/dev/null || true
-sudo docker rm postiz postiz-postgres postiz-redis 2>/dev/null || true
-# محاولة إيقاف docker-compose إذا كان موجوداً
-if [ -f docker-compose.yml ]; then
-    sudo docker-compose down 2>/dev/null || true
-fi
+# ---------------------------------
+# 5) إعداد ملف .env
+# ---------------------------------
+cat > .env <<ENV
+MAIN_URL="https://${NGROK_DOMAIN}"
+FRONTEND_URL="https://${NGROK_DOMAIN}"
+NEXT_PUBLIC_BACKEND_URL="https://${NGROK_DOMAIN}/api"
+JWT_SECRET="${POSTIZ_JWT_SECRET}"
+DATABASE_URL="postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
+REDIS_URL="redis://postiz-redis:6379"
+POSTIZ_PORT="${POSTIZ_PORT}"
+ENV
 
-# 🔁 إنشاء خدمة ngrok للنطاق الثابت
-sudo bash -c 'cat > /etc/systemd/system/ngrok-postiz.service <<EOF
+# ---------------------------------
+# 6) إعداد systemd لـ ngrok
+# ---------------------------------
+sudo bash -c "cat > /etc/systemd/system/ngrok-postiz.service" <<EOF
 [Unit]
 Description=Ngrok Tunnel for Postiz
 After=network.target docker.service
 
 [Service]
-ExecStart=/usr/local/bin/ngrok http --domain=jaybird-normal-publicly.ngrok-free.app 5000
+ExecStart=/usr/local/bin/ngrok http --domain=${NGROK_DOMAIN} ${POSTIZ_PORT}
 Restart=always
 User=root
 
 [Install]
 WantedBy=multi-user.target
-EOF'
+EOF
 
-# تفعيل وتشغيل خدمة ngrok
 sudo systemctl daemon-reload
 sudo systemctl enable ngrok-postiz.service
 sudo systemctl start ngrok-postiz.service
 
-# ⏱️ انتظار ngrok ليشتغل
-echo "⌛️ انتظار ngrok..."
-sleep 10
+# ---------------------------------
+# 7) تشغيل Postiz
+# ---------------------------------
+echo "🐳 تشغيل Postiz باستخدام docker-compose..."
+docker-compose pull
+docker-compose up -d
 
-# 🐳 تشغيل Postiz
-echo "🚀 تشغيل Postiz..."
-echo "📁 التأكد من المجلد: $(pwd)"
-ls -la
-sudo docker-compose up -d
+# ---------------------------------
+# 8) انتظار ثواني حتى تبدأ الحاويات
+# ---------------------------------
+echo "⌛️ انتظر 20 ثانية حتى تشتغل الحاويات..."
+sleep 20
 
-# ⏱️ انتظار تشغيل الخدمات
-echo "⌛️ انتظار تشغيل جميع الخدمات..."
-sleep 30
+# ---------------------------------
+# 9) إنشاء حساب المسؤول تلقائيًا داخل الحاوية
+# ---------------------------------
+echo "🔐 إنشاء حساب مسؤول تلقائيًا..."
 
-# 📊 عرض حالة الخدمات
-echo "📊 حالة الخدمات:"
-sudo docker-compose ps
+docker exec -i postiz /bin/sh -c " \
+  node -e \"(async () => { \
+    const { prisma } = require('@prisma/client'); \
+    const bcrypt = require('bcrypt'); \
+    const prismaClient = new prisma.PrismaClient(); \
+    const exists = await prismaClient.user.findFirst({ where: { email: '$ADMIN_EMAIL' } }); \
+    if (!exists) { \
+      const hashedPassword = await bcrypt.hash('$ADMIN_PASSWORD', 10); \
+      await prismaClient.user.create({ data: { email: '$ADMIN_EMAIL', username: '$ADMIN_USERNAME', password: hashedPassword, role: 'ADMIN' } }); \
+      console.log('✅ حساب المسؤول تم إنشاؤه'); \
+    } else { \
+      console.log('ℹ️ حساب المسؤول موجود مسبقًا'); \
+    } \
+    process.exit(0); \
+  })().catch(e => { console.error(e); process.exit(1); });\" \
+"
 
-# 🌍 التحقق من ngrok
-NGROK_URL="https://jaybird-normal-publicly.ngrok-free.app"
-echo "🌐 رابط Postiz: $NGROK_URL"
-
-# 📋 عرض معلومات الدخول
 echo ""
-echo "✅ تم تثبيت Postiz بنجاح!"
-echo "🌐 الرابط: $NGROK_URL"
-echo "👤 يمكنك الآن إنشاء حساب جديد من خلال الواجهة"
-echo ""
-echo "📝 معلومات إضافية:"
-echo "   - مجلد التثبيت: ~/postiz"
-echo "   - لعرض اللوجز: cd ~/postiz && sudo docker-compose logs -f"
-echo "   - لإعادة التشغيل: cd ~/postiz && sudo docker-compose restart"
-echo "   - لإيقاف الخدمة: cd ~/postiz && sudo docker-compose down"
-echo ""
-echo "🔧 إذا واجهت مشاكل، تحقق من اللوجز باستخدام:"
-echo "   cd ~/postiz && sudo docker-compose logs"
+echo "✅ التثبيت والانشاء اكتمل!"
+echo "🌐 افتح الآن: https://${NGROK_DOMAIN}"
+echo "📧 حساب المسؤول: $ADMIN_EMAIL"
+echo "🔑 كلمة المرور: $ADMIN_PASSWORD"
