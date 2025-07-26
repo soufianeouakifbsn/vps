@@ -1,33 +1,20 @@
 #!/bin/bash
 
-echo "🧹 Starting Postiz uninstallation..."
+echo "⛔️ بدء إزالة Postiz من Docker..."
 
-# Step 1: Navigate to the Postiz folder (default ~/postiz or /opt/postiz)
-INSTALL_DIR="${1:-$HOME/postiz}"
+# 1. إيقاف الحاويات
+echo "🛑 إيقاف جميع الحاويات المرتبطة بـ Postiz..."
+docker compose -f postiz-docker/docker-compose.yml down || true
 
-if [ ! -d "$INSTALL_DIR" ]; then
-  echo "❌ Installation directory not found at: $INSTALL_DIR"
-  echo "👉 Please run the script with the correct directory path:"
-  echo "   ./uninstall_postiz.sh /your/custom/path"
-  exit 1
-fi
+# 2. إزالة الحاويات والصور والشبكات
+echo "🧹 حذف الصور، الحاويات، والشبكات..."
+docker system prune -af --volumes
 
-cd "$INSTALL_DIR" || exit
+# 3. حذف مجلد postiz
+echo "🗑️ حذف مجلد postiz-docker إن وُجد..."
+rm -rf postiz-docker
 
-# Step 2: Stop and remove Docker containers
-echo "🛑 Stopping and removing Docker containers..."
-docker compose down
+# 4. التحقق من إزالة Docker Compose plugin
+echo "❌ التحقق من إزالة docker compose plugin ليس ضرورياً إذا كنت ستعيد تثبيته لاحقاً."
 
-# Step 3: Remove Docker volumes (if any)
-echo "🧽 Removing Docker volumes..."
-docker volume rm $(docker volume ls -qf dangling=true) 2>/dev/null
-
-# Step 4: Delete installation directory
-echo "🗑 Deleting installation directory: $INSTALL_DIR"
-rm -rf "$INSTALL_DIR"
-
-# Step 5: Remove any remaining Postiz images (optional)
-echo "🧼 Removing Postiz Docker images..."
-docker images | grep postiz | awk '{print $3}' | xargs -r docker rmi
-
-echo "✅ Postiz uninstalled successfully!"
+echo "✅ تم إزالة Postiz بالكامل من النظام."
