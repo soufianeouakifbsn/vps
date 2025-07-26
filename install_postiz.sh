@@ -2,66 +2,60 @@
 set -euo pipefail
 
 #############################################
-# Postiz + Docker Compose + ngrok one-liner #
+# Postiz + Docker Compose + ngrok installer #
 #############################################
 
-# ===[ قابل للتعديل ]===
+# ===[ إعدادات قابلة للتعديل ]===
 NGROK_DOMAIN="jaybird-normal-publicly.ngrok-free.app"
 NGROK_TOKEN="30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9"
 POSTIZ_DIR="/opt/postiz"
 POSTIZ_IMAGE="ghcr.io/gitroomhq/postiz-app:latest"
 POSTIZ_JWT_SECRET="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 64 || true)"
-
-# لا تغيّر البورت 5000 إن لم تكن تعرف ما تفعل (Postiz يوصي باستعمال منفذ موحّد 5000).
 POSTIZ_PORT="5000"
 
-echo "🚀 Starting Postiz installation ..."
+echo "🚀 بدء تثبيت Postiz..."
 
 # ---------------------------------
-# 0) Basic tools
-# ---------------------------------
-if ! command -v curl &>/dev/null; then
-  sudo apt update
-  sudo apt install -y curl
-fi
-
-# ---------------------------------
-# 1) Install Docker & docker compose plugin if needed
+# 1) تثبيت Docker + Compose
 # ---------------------------------
 if ! command -v docker &>/dev/null; then
-  echo "📦 Installing Docker..."
-  sudo apt update
-  sudo apt install -y docker.io
-  sudo systemctl enable --now docker
+  echo "📦 تثبيت Docker بالطريقة الرسمية..."
+  curl -fsSL https://get.docker.com -o get-docker.sh
+  sudo sh get-docker.sh
+  rm get-docker.sh
+  sudo usermod -aG docker "$USER"
+  newgrp docker <<EONG
+echo "✅ تم تفعيل مجموعة docker للمستخدم الحالي."
+EONG
 fi
 
 if ! docker compose version &>/dev/null; then
-  echo "🔧 Installing docker compose plugin..."
-  sudo apt update
-  sudo apt install -y docker-compose-plugin
+  echo "🔧 تثبيت Docker Compose يدويًا..."
+  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
+  sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true
 fi
 
 # ---------------------------------
-# 2) Install ngrok (if missing)
+# 2) تثبيت ngrok (إن لم يكن موجودًا)
 # ---------------------------------
 if ! command -v ngrok &>/dev/null; then
-  echo "⬇️ Installing ngrok..."
+  echo "⬇️ تثبيت ngrok..."
   wget -O /tmp/ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
   sudo tar xvzf /tmp/ngrok.tgz -C /usr/local/bin
 fi
 
-# Configure ngrok token
 ngrok config add-authtoken "$NGROK_TOKEN"
 
 # ---------------------------------
-# 3) Prepare folders
+# 3) تجهيز مجلد Postiz
 # ---------------------------------
 sudo mkdir -p "$POSTIZ_DIR"
-sudo chown -R "$USER":"$USER" "$POSTIZ_DIR"
+sudo chown -R "$USER:$USER" "$POSTIZ_DIR"
 cd "$POSTIZ_DIR"
 
 # ---------------------------------
-# 4) Create docker-compose.yml (from official docs, adapted)
+# 4) إنشاء ملف docker-compose.yml
 # ---------------------------------
 cat > docker-compose.yml <<'YAML'
 services:
@@ -70,7 +64,6 @@ services:
     container_name: postiz
     restart: always
     environment:
-      # سيتم حقن هذه القيم ديناميكياً بواسطة envsubst قبل التشغيل
       MAIN_URL: "${MAIN_URL}"
       FRONTEND_URL: "${FRONTEND_URL}"
       NEXT_PUBLIC_BACKEND_URL: "${NEXT_PUBLIC_BACKEND_URL}"
@@ -130,39 +123,29 @@ services:
 
 volumes:
   postgres-volume:
-    external: false
   postiz-redis-data:
-    external: false
   postiz-config:
-    external: false
   postiz-uploads:
-    external: false
 
 networks:
   postiz-network:
-    external: false
 YAML
 
 # ---------------------------------
-# 5) Create .env file that docker compose will read
+# 5) إعداد ملف .env
 # ---------------------------------
 cat > .env <<ENV
-# ---- URLs (use your ngrok https domain) ----
 MAIN_URL="https://${NGROK_DOMAIN}"
 FRONTEND_URL="https://${NGROK_DOMAIN}"
 NEXT_PUBLIC_BACKEND_URL="https://${NGROK_DOMAIN}/api"
-
-# ---- Secrets & connections ----
 JWT_SECRET="${POSTIZ_JWT_SECRET}"
 DATABASE_URL="postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
 REDIS_URL="redis://postiz-redis:6379"
-
-# ---- Port mapping (host:container) ----
 POSTIZ_PORT="${POSTIZ_PORT}"
 ENV
 
 # ---------------------------------
-# 6) Create a systemd unit for ngrok (to expose :5000)
+# 6) إعداد systemd لـ ngrok
 # ---------------------------------
 sudo bash -c "cat > /etc/systemd/system/ngrok-postiz.service" <<EOF
 [Unit]
@@ -183,14 +166,12 @@ sudo systemctl enable ngrok-postiz.service
 sudo systemctl start ngrok-postiz.service
 
 # ---------------------------------
-# 7) Launch Postiz
+# 7) تشغيل Postiz
 # ---------------------------------
-echo "🐳 Pulling & starting Postiz via docker compose..."
-docker compose pull
-docker compose up -d
+echo "🐳 تشغيل Postiz باستخدام docker-compose..."
+docker-compose pull
+docker-compose up -d
 
 echo ""
-echo "✅ Done!"
-echo "🌐 Access Postiz at: https://${NGROK_DOMAIN}"
-echo "📦 Compose files in: ${POSTIZ_DIR}"
-echo "🛠  To see logs: cd ${POSTIZ_DIR} && docker compose logs -f --tail=100"
+echo "✅ تم التثبيت بنجاح!"
+echo "🌐 افتح الآن: https://${NGROK_DOMAIN}"
