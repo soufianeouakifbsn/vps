@@ -1,8 +1,28 @@
 #!/bin/bash
 
-echo "🚀 بدء تثبيت Postiz وربطه بـ ngrok..."
+echo "🚨 بدء تنظيف النظام من تثبيت Postiz السابق..."
 
-# 📦 1. تثبيت Docker إذا لم يكن مثبتًا
+# 🧹 1. إيقاف وحذف الحاويات القديمة إن وُجدت
+sudo docker stop postiz postiz-postgres postiz-redis 2>/dev/null || true
+sudo docker rm postiz postiz-postgres postiz-redis 2>/dev/null || true
+
+# 🧹 2. حذف الشبكة القديمة إن وُجدت
+sudo docker network rm postiz-network 2>/dev/null || true
+
+# 🧹 3. حذف مجلدات البيانات القديمة
+rm -rf ~/postiz
+
+# 🧹 4. حذف خدمة ngrok القديمة الخاصة بـ Postiz
+sudo systemctl stop ngrok-postiz.service 2>/dev/null || true
+sudo systemctl disable ngrok-postiz.service 2>/dev/null || true
+sudo rm -f /etc/systemd/system/ngrok-postiz.service
+sudo systemctl daemon-reload
+
+echo "✅ تم التنظيف بنجاح!"
+
+echo "🔧 بدء التثبيت الجديد..."
+
+# 📦 5. تثبيت Docker إذا لم يكن مثبتًا
 if ! command -v docker &> /dev/null; then
   echo "📦 تثبيت Docker..."
   sudo apt update
@@ -11,34 +31,34 @@ if ! command -v docker &> /dev/null; then
   sudo systemctl enable docker
 fi
 
-# 🧰 2. تثبيت docker-compose إذا لم يكن موجودًا
+# ⚙️ 6. تثبيت docker-compose إذا لم يكن موجودًا
 if ! command -v docker-compose &> /dev/null; then
   echo "🔧 تثبيت docker-compose..."
   sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
   sudo chmod +x /usr/local/bin/docker-compose
 fi
 
-# 🌐 3. تثبيت ngrok إذا لم يكن موجودًا
+# 🌐 7. تثبيت ngrok إذا لم يكن موجودًا
 if ! command -v ngrok &> /dev/null; then
   echo "⬇️ تثبيت ngrok..."
   wget -O ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
   sudo tar xvzf ngrok.tgz -C /usr/local/bin
 fi
 
-# 🔐 4. إعداد ngrok بالتوكن الخاص بك
+# 🔐 8. إعداد ngrok بالتوكن الخاص بك
 ngrok config add-authtoken 30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9
 
-# 📁 5. إنشاء مجلد للعمل
+# 📁 9. إنشاء مجلد للعمل
 export WORKING_DIR=$HOME
 mkdir -p $WORKING_DIR/postiz/{config,uploads,postgres,redis}
 
-# ⚙️ 6. إعداد ملف البيئة .env
+# ⚙️ 10. إعداد ملف البيئة .env
 cat > $WORKING_DIR/postiz/.env <<EOF
 DOMAIN=jaybird-normal-publicly.ngrok-free.app
 WORKING_DIR=$WORKING_DIR
 EOF
 
-# 🐳 7. إنشاء ملف docker-compose.yml
+# 🐳 11. إنشاء ملف docker-compose.yml
 cat > $WORKING_DIR/postiz/docker-compose.yml <<'EOF'
 version: '3.9'
 services:
@@ -111,7 +131,7 @@ networks:
     external: false
 EOF
 
-# 🌍 8. إعداد ngrok كخدمة postiz-ngrok
+# 🌍 12. إعداد خدمة ngrok الخاصة بـ postiz
 sudo bash -c 'cat > /etc/systemd/system/ngrok-postiz.service <<EOF
 [Unit]
 Description=Ngrok Tunnel for Postiz
@@ -130,12 +150,12 @@ sudo systemctl daemon-reload
 sudo systemctl enable ngrok-postiz.service
 sudo systemctl start ngrok-postiz.service
 
-# ⏳ 9. انتظار ngrok ليشتغل
-echo "⌛️ انتظار ngrok..."
+# ⏳ 13. انتظار ngrok ليبدأ
+echo "⌛️ انتظار ngrok ليشتغل..."
 sleep 8
 
-# 🚀 10. تشغيل postiz
+# 🚀 14. تشغيل postiz باستخدام docker-compose
 cd $WORKING_DIR/postiz
 docker-compose up -d
 
-echo "✅ تم تشغيل postiz على: https://jaybird-normal-publicly.ngrok-free.app"
+echo "✅ تم تشغيل postiz بنجاح على: https://jaybird-normal-publicly.ngrok-free.app"
