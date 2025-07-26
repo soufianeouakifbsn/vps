@@ -1,20 +1,24 @@
 #!/bin/bash
 
-echo "⛔️ بدء إزالة Postiz من Docker..."
+echo "⛔️ بدء إزالة Postiz من النظام..."
 
-# 1. إيقاف الحاويات
-echo "🛑 إيقاف جميع الحاويات المرتبطة بـ Postiz..."
-docker compose -f postiz-docker/docker-compose.yml down || true
+# 1. إيقاف الخدمة ngrok
+echo "🛑 إيقاف خدمة ngrok-postiz.service إن وُجدت..."
+sudo systemctl stop ngrok-postiz.service 2>/dev/null || true
+sudo systemctl disable ngrok-postiz.service 2>/dev/null || true
+sudo rm -f /etc/systemd/system/ngrok-postiz.service
+sudo systemctl daemon-reload
 
-# 2. إزالة الحاويات والصور والشبكات
-echo "🧹 حذف الصور، الحاويات، والشبكات..."
+# 2. إيقاف الحاويات
+echo "🛑 إيقاف وتشغيل docker-compose down..."
+docker compose -f ~/postiz/docker-compose.yml down || true
+
+# 3. إزالة الحاويات والصور والشبكات
+echo "🧹 حذف الصور، الحاويات، الشبكات، والـ volumes..."
 docker system prune -af --volumes
 
-# 3. حذف مجلد postiz
-echo "🗑️ حذف مجلد postiz-docker إن وُجد..."
-rm -rf postiz-docker
+# 4. حذف مجلد postiz
+echo "🗑️ حذف مجلد ~/postiz..."
+rm -rf ~/postiz
 
-# 4. التحقق من إزالة Docker Compose plugin
-echo "❌ التحقق من إزالة docker compose plugin ليس ضرورياً إذا كنت ستعيد تثبيته لاحقاً."
-
-echo "✅ تم إزالة Postiz بالكامل من النظام."
+echo "✅ تم إزالة Postiz وكل متعلقاته من النظام."
