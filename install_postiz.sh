@@ -1,65 +1,31 @@
 #!/bin/bash
 
-# === إعداد أولي ===
-set -e
+# Postiz installation script by Soufiane
+# Ref: https://github.com/gitroomhq/postiz-app
 
-echo "🔧 بدء تثبيت Postiz مع ngrok ثابت..."
+echo "🔄 Updating system..."
+sudo apt update && sudo apt upgrade -y
 
-# === تحديث النظام وتثبيت المتطلبات ===
-apt update && apt install -y curl unzip docker.io docker-compose
+echo "🐳 Installing Docker & Docker Compose..."
+sudo apt install -y docker.io docker-compose
 
-# === إعداد ngrok ===
-echo "🌐 إعداد ngrok..."
-NGROK_DOMAIN="jaybird-normal-publicly.ngrok-free.app"
-NGROK_TOKEN="30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9"
+echo "🧰 Creating postiz-app directory..."
+mkdir -p ~/postiz-app
+cd ~/postiz-app
 
-curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-apt update && apt install -y ngrok
+echo "📥 Downloading docker-compose.yml from GitHub..."
+curl -o docker-compose.yml https://raw.githubusercontent.com/gitroomhq/postiz-app/main/docker-compose.yml
 
-ngrok config add-authtoken "$NGROK_TOKEN"
-
-# === إعداد نفق ثابت من ngrok ===
-mkdir -p ~/.config/ngrok
-cat > ~/.config/ngrok/ngrok.yml <<EOF
-authtoken: $NGROK_TOKEN
-tunnels:
-  postiz:
-    proto: http
-    addr: 3000
-    domain: $NGROK_DOMAIN
+echo "🔐 Creating .env file..."
+cat <<EOF > .env
+POSTIZ_PORT=3000
+POSTIZ_DB_USERNAME=postiz
+POSTIZ_DB_PASSWORD=securepassword123
+POSTIZ_DB_NAME=postizdb
+POSTIZ_DB_PORT=5432
 EOF
 
-# إنشاء خدمة systemd لتشغيل ngrok تلقائياً
-cat > /etc/systemd/system/ngrok.service <<EOF
-[Unit]
-Description=Ngrok Tunnel
-After=network.target
+echo "✅ Launching Postiz containers..."
+sudo docker-compose up -d
 
-[Service]
-ExecStart=/usr/bin/ngrok start --config /root/.config/ngrok/ngrok.yml --all
-Restart=on-failure
-User=root
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl enable ngrok && systemctl start ngrok
-
-# === تحميل ملفات Postiz ===
-echo "📦 تحميل Postiz..."
-mkdir -p /opt/postiz && cd /opt/postiz
-git clone https://github.com/postiz/postiz.git .
-cp .env.example .env
-
-# تعديل .env لاستخدام الدومين الثابت
-sed -i "s|^APP_URL=.*|APP_URL=https://$NGROK_DOMAIN|" .env
-sed -i "s|^FRONTEND_URL=.*|FRONTEND_URL=https://$NGROK_DOMAIN|" .env
-
-# إنشاء قاعدة بيانات وبدء الخدمات
-docker-compose up -d --build
-
-# تأكيد التشغيل
-echo "✅ تم تثبيت Postiz بنجاح!"
-echo "🌍 رابط الوصول: https://$NGROK_DOMAIN"
+echo "✅ Postiz is now running on port 3000!"
