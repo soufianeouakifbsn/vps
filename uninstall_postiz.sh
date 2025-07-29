@@ -1,31 +1,44 @@
 #!/bin/bash
 
-echo "🧹 بدء تنظيف كامل لكل ما يتعلق بـ Postiz..."
+echo "🚨 بدء إزالة كل ما يتعلق بـ Postiz..."
 
-# 1. إيقاف أي حاويات قيد التشغيل مرتبطة بـ postiz
-echo "🛑 إيقاف الحاويات..."
-sudo docker ps -a --filter "name=postiz" --format "{{.ID}}" | xargs -r sudo docker stop
-sudo docker ps -a --filter "name=postiz" --format "{{.ID}}" | xargs -r sudo docker rm
+# إيقاف الحاويات التي تحتوي على اسم postiz
+POSTIZ_CONTAINERS=$(sudo docker ps -a --filter "name=postiz" --format "{{.ID}}")
+if [ -n "$POSTIZ_CONTAINERS" ]; then
+  echo "🛑 إيقاف وحذف الحاويات:"
+  echo "$POSTIZ_CONTAINERS"
+  sudo docker stop $POSTIZ_CONTAINERS
+  sudo docker rm -f $POSTIZ_CONTAINERS
+else
+  echo "✅ لا توجد حاويات باسم postiz قيد التشغيل."
+fi
 
-# 2. حذف الصور التي لها علاقة بـ postiz
-echo "🗑️ حذف الصور..."
-sudo docker images --filter=reference='*postiz*' --format "{{.ID}}" | xargs -r sudo docker rmi -f
+# حذف الصور التي تحتوي على postiz
+POSTIZ_IMAGES=$(sudo docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep postiz | awk '{print $2}')
+if [ -n "$POSTIZ_IMAGES" ]; then
+  echo "🗑️ حذف الصور:"
+  echo "$POSTIZ_IMAGES"
+  sudo docker rmi -f $POSTIZ_IMAGES
+else
+  echo "✅ لا توجد صور postiz."
+fi
 
-# 3. حذف أي شبكة Docker مخصصة لـ Postiz
-echo "🌐 حذف الشبكات..."
-sudo docker network ls --filter name=postiz --format "{{.ID}}" | xargs -r sudo docker network rm
+# حذف مجلد postiz-app
+if [ -d "/opt/postiz-app" ]; then
+  echo "🗂️ حذف مجلد /opt/postiz-app"
+  sudo rm -rf /opt/postiz-app
+else
+  echo "✅ لا يوجد مجلد /opt/postiz-app"
+fi
 
-# 4. حذف أي volumes قد تكون مستخدمة من قبل Postiz
-echo "💾 حذف الحجوم..."
-sudo docker volume ls --filter name=postiz --format "{{.Name}}" | xargs -r sudo docker volume rm
+# حذف ملفات postiz المحتملة في أي مكان
+echo "🧹 البحث عن ملفات postiz في النظام..."
+sudo find / -type f \( -iname "*postiz*" -o -iname "docker-compose.yml" -o -iname ".env" \) -exec rm -f {} \; 2>/dev/null
 
-# 5. حذف مجلد المشروع بالكامل
-echo "🗂️ حذف مجلد /opt/postiz-app..."
-sudo rm -rf /opt/postiz-app
+# تنظيف Docker
+echo "🧼 تنظيف Docker..."
+sudo docker volume prune -f
+sudo docker network prune -f
+sudo docker system prune -f --volumes
 
-# 6. التأكد من عدم وجود ملفات متبقية باسم postiz في النظام
-echo "🔍 البحث عن أي ملفات postiz متبقية في /opt أو /var أو /etc..."
-sudo find /opt /var /etc -type d -name "*postiz*" -exec rm -rf {} +
-sudo find /opt /var /etc -type f -name "*postiz*" -exec rm -f {} +
-
-echo "✅ تم تنظيف Postiz بالكامل من هذا السيرفر."
+echo "✅ تم مسح كل شيء متعلق بـ Postiz بنجاح!"
