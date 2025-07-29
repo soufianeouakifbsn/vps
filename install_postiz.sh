@@ -1,31 +1,34 @@
 #!/bin/bash
 
-# Postiz installation script by Soufiane
-# Ref: https://github.com/gitroomhq/postiz-app
-
-echo "🔄 Updating system..."
+# إعداد مبدئي
 sudo apt update && sudo apt upgrade -y
+sudo apt install -y docker.io docker-compose git unzip curl
 
-echo "🐳 Installing Docker & Docker Compose..."
-sudo apt install -y docker.io docker-compose
+# تفعيل Docker
+sudo systemctl enable docker
+sudo systemctl start docker
 
-echo "🧰 Creating postiz-app directory..."
-mkdir -p ~/postiz-app
-cd ~/postiz-app
+# إنشاء مجلد المشروع
+cd /opt || exit
+sudo git clone https://github.com/gitroomhq/postiz-app.git
+cd postiz-app || exit
 
-echo "📥 Downloading docker-compose.yml from GitHub..."
-curl -o docker-compose.yml https://raw.githubusercontent.com/gitroomhq/postiz-app/main/docker-compose.yml
+# تحميل أحدث نسخة من env وملف docker-compose
+sudo curl -o .env https://raw.githubusercontent.com/gitroomhq/postiz-app/main/.env.example
 
-echo "🔐 Creating .env file..."
-cat <<EOF > .env
-POSTIZ_PORT=3000
-POSTIZ_DB_USERNAME=postiz
-POSTIZ_DB_PASSWORD=securepassword123
-POSTIZ_DB_NAME=postizdb
-POSTIZ_DB_PORT=5432
-EOF
+# إنشاء مجلد التخزين للبوت
+sudo mkdir -p ./data
 
-echo "✅ Launching Postiz containers..."
+# إعطاء الصلاحيات
+sudo chown -R $USER:$USER .
+
+# تشغيل الخدمة
 sudo docker-compose up -d
 
-echo "✅ Postiz is now running on port 3000!"
+# الانتظار قليلاً ثم التحقق من التشغيل
+sleep 10
+sudo docker ps
+
+# طباعة رابط الوصول
+IP=$(curl -s ifconfig.me)
+echo "✅ تم التثبيت بنجاح! افتح الآن: http://$IP:3000"
