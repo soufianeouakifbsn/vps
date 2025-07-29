@@ -1,24 +1,21 @@
 #!/bin/bash
 
-echo "⛔️ بدء إزالة Postiz من النظام..."
+echo "🔄 جاري إيقاف وإزالة Postiz..."
 
-# 1. إيقاف الخدمة ngrok
-echo "🛑 إيقاف خدمة ngrok-postiz.service إن وُجدت..."
-sudo systemctl stop ngrok-postiz.service 2>/dev/null || true
-sudo systemctl disable ngrok-postiz.service 2>/dev/null || true
-sudo rm -f /etc/systemd/system/ngrok-postiz.service
-sudo systemctl daemon-reload
+# التحقق من وجود مجلد المشروع
+if [ -d "/opt/postiz-app" ]; then
+  cd /opt/postiz-app || exit
 
-# 2. إيقاف الحاويات
-echo "🛑 إيقاف وتشغيل docker-compose down..."
-docker compose -f ~/postiz/docker-compose.yml down || true
+  echo "🛑 إيقاف وتشغيل الحاويات..."
+  sudo docker-compose down
 
-# 3. إزالة الحاويات والصور والشبكات
-echo "🧹 حذف الصور، الحاويات، الشبكات، والـ volumes..."
-docker system prune -af --volumes
+  echo "🗑️ إزالة الحاويات والصور المتعلقة بـ postiz..."
+  # إزالة الحاويات والصور الخاصة بـ postiz
+  sudo docker container prune -f
+  sudo docker image prune -a -f
+fi
 
-# 4. حذف مجلد postiz
-echo "🗑️ حذف مجلد ~/postiz..."
-rm -rf ~/postiz
+echo "🗂️ حذف ملفات المشروع من /opt/postiz-app"
+sudo rm -rf /opt/postiz-app
 
-echo "✅ تم إزالة Postiz وكل متعلقاته من النظام."
+echo "✅ تم إزالة Postiz بالكامل من هذا السيرفر."
