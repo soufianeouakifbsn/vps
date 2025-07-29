@@ -145,8 +145,6 @@ cd "$POSTIZ_DIR"
 print_info "إنشاء ملف docker-compose.yml..."
 
 cat > docker-compose.yml <<'YAML'
-version: '3.8'
-
 services:
   postiz:
     image: ghcr.io/gitroomhq/postiz-app:latest
@@ -324,49 +322,73 @@ sleep 30
 print_info "إعداد قاعدة البيانات..."
 
 # تشغيل migrations
-docker-compose exec -T postiz sh -c "npm run db:migrate" || {
-    print_warning "فشل في تشغيل migrations، جاري المحاولة مرة أخرى..."
-    sleep 10
-    docker-compose exec -T postiz sh -c "npm run db:migrate"
-}
+print_info "تشغيل database migrations..."
+max_retries=5
+retry_count=0
+
+while [ $retry_count -lt $max_retries ]; do
+    if docker-compose exec -T postiz sh -c "npx prisma migrate deploy" 2>/dev/null; then
+        print_success "تم تشغيل migrations بنجاح"
+        break
+    else
+        retry_count=$((retry_count + 1))
+        print_warning "محاولة $retry_count من $max_retries فشلت، جاري إعادة المحاولة..."
+        sleep 15
+        
+        if [ $retry_count -eq $max_retries ]; then
+            print_warning "فشل في تشغيل migrations، جاري إنشاء قاعدة البيانات يدوياً..."
+            docker-compose exec -T postiz sh -c "npx prisma db push --force-reset" || true
+        fi
+    fi
+done
 
 # ---------------------------------
 # 14) إنشاء حساب المسؤول
 # ---------------------------------
 print_info "🔐 إنشاء حساب المسؤول..."
 
-docker-compose exec -T postiz sh -c "
-node -e \"
+# إنشاء سكريبت إنشاء المسؤول
+cat > create_admin.js <<'JSEOF'
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 
-(async () => {
-  const prisma = new PrismaClient();
+async function createAdmin() {
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL
+      }
+    }
+  });
   
   try {
+    console.log('🔍 التحقق من اتصال قاعدة البيانات...');
+    await prisma.$connect();
+    
     console.log('🔍 البحث عن حساب المسؤول الموجود...');
     const existingUser = await prisma.user.findUnique({
-      where: { email: '$ADMIN_EMAIL' }
+      where: { email: process.env.ADMIN_EMAIL }
     });
+    
+    const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
     
     if (existingUser) {
       console.log('ℹ️ حساب المسؤول موجود مسبقاً، جاري تحديث كلمة المرور...');
-      const hashedPassword = await bcrypt.hash('$ADMIN_PASSWORD', 12);
       await prisma.user.update({
-        where: { email: '$ADMIN_EMAIL' },
+        where: { email: process.env.ADMIN_EMAIL },
         data: { 
           password: hashedPassword,
-          role: 'ADMIN'
+          role: 'ADMIN',
+          verified: true
         }
       });
       console.log('✅ تم تحديث حساب المسؤول');
     } else {
       console.log('🆕 إنشاء حساب مسؤول جديد...');
-      const hashedPassword = await bcrypt.hash('$ADMIN_PASSWORD', 12);
       await prisma.user.create({
         data: {
-          email: '$ADMIN_EMAIL',
-          username: '$ADMIN_USERNAME',
+          email: process.env.ADMIN_EMAIL,
+          username: process.env.ADMIN_USERNAME,
           password: hashedPassword,
           role: 'ADMIN',
           verified: true
@@ -378,47 +400,37 @@ const bcrypt = require('bcrypt');
     console.error('❌ خطأ في إنشاء حساب المسؤول:', error.message);
     process.exit(1);
   } finally {
-    await prisma.\$disconnect();
-    process.exit(0);
+    await prisma.$disconnect();
+    console.log('🔌 تم قطع الاتصال من قاعدة البيانات');
   }
-})();
-\"
+}
+
+createAdmin();
+JSEOF
+
+docker-compose exec -T postiz sh -c "
+export ADMIN_EMAIL='$ADMIN_EMAIL'
+export ADMIN_USERNAME='$ADMIN_USERNAME' 
+export ADMIN_PASSWORD='$ADMIN_PASSWORD'
+node /create_admin.js
 " || {
     print_error "فشل في إنشاء حساب المسؤول"
     print_info "جاري المحاولة مرة أخرى بعد إعادة تشغيل الحاوية..."
     docker-compose restart postiz
     sleep 30
     
+    # نسخ السكريبت إلى الحاوية ومحاولة تشغيله مرة أخرى
+    docker cp create_admin.js postiz:/create_admin.js
     docker-compose exec -T postiz sh -c "
-    node -e \"
-    const { PrismaClient } = require('@prisma/client');
-    const bcrypt = require('bcrypt');
-    
-    (async () => {
-      const prisma = new PrismaClient();
-      try {
-        const hashedPassword = await bcrypt.hash('$ADMIN_PASSWORD', 12);
-        await prisma.user.upsert({
-          where: { email: '$ADMIN_EMAIL' },
-          update: { password: hashedPassword, role: 'ADMIN' },
-          create: {
-            email: '$ADMIN_EMAIL',
-            username: '$ADMIN_USERNAME', 
-            password: hashedPassword,
-            role: 'ADMIN',
-            verified: true
-          }
-        });
-        console.log('✅ تم إنشاء/تحديث حساب المسؤول');
-      } catch (error) {
-        console.error('❌ خطأ:', error.message);
-      } finally {
-        await prisma.\$disconnect();
-      }
-    })();
-    \"
-    "
+    export ADMIN_EMAIL='$ADMIN_EMAIL'
+    export ADMIN_USERNAME='$ADMIN_USERNAME' 
+    export ADMIN_PASSWORD='$ADMIN_PASSWORD'
+    node /create_admin.js
+    " || print_error "فشل في إنشاء حساب المسؤول نهائياً"
 }
+
+# حذف ملف السكريبت المؤقت
+rm -f create_admin.js
 
 # ---------------------------------
 # 15) التحقق من حالة الخدمات
