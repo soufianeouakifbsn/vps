@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# إعداد مبدئي
+# تحديث النظام وتثبيت المتطلبات
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y docker.io docker-compose git unzip curl
 
@@ -8,24 +8,28 @@ sudo apt install -y docker.io docker-compose git unzip curl
 sudo systemctl enable docker
 sudo systemctl start docker
 
-# إنشاء مجلد المشروع
+# الدخول إلى /opt وتحميل المشروع
 cd /opt || exit
 sudo git clone https://github.com/gitroomhq/postiz-app.git
 cd postiz-app || exit
 
-# تحميل أحدث نسخة من env وملف docker-compose
+# تحميل ملفات البيئة
 sudo curl -o .env https://raw.githubusercontent.com/gitroomhq/postiz-app/main/.env.example
+sudo curl -o docker-compose.yml https://raw.githubusercontent.com/gitroomhq/postiz-app/main/docker-compose.yml
 
-# إنشاء مجلد التخزين للبوت
+# تصحيح مشكلة اسم الخدمة 404
+sudo sed -i "s/^  404:/  '404':/" docker-compose.yml
+
+# إنشاء مجلد البيانات
 sudo mkdir -p ./data
 
-# إعطاء الصلاحيات
+# إعطاء الصلاحيات للمستخدم الحالي
 sudo chown -R $USER:$USER .
 
-# تشغيل الخدمة
+# تشغيل الحاويات
 sudo docker-compose up -d
 
-# الانتظار قليلاً ثم التحقق من التشغيل
+# الانتظار ثم عرض الحاويات
 sleep 10
 sudo docker ps
 
