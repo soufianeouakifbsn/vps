@@ -37,6 +37,11 @@ fi
 # إعداد ngrok بحسابك باستخدام المتغيرات
 ngrok config add-authtoken "$NGROK_TOKEN"
 
+# حذف أي خدمة ngrok-n8n قديمة
+sudo systemctl stop ngrok-n8n.service 2>/dev/null || true
+sudo systemctl disable ngrok-n8n.service 2>/dev/null || true
+sudo rm /etc/systemd/system/ngrok-n8n.service 2>/dev/null || true
+
 # إنشاء systemd service لـ ngrok
 sudo bash -c "cat > /etc/systemd/system/ngrok-n8n.service <<EOF
 [Unit]
