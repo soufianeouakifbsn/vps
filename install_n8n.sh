@@ -1,34 +1,52 @@
 #!/bin/bash
 
-echo "🚀 بدء تثبيت n8n وربطه بـ ngrok..."
+echo "🧨 إزالة كل ما يتعلق بـ n8n و ngrok..."
+# 🛑 إيقاف الخدمة إن وُجدت
+sudo systemctl stop ngrok-n8n.service 2>/dev/null || true
+sudo systemctl disable ngrok-n8n.service 2>/dev/null || true
+sudo rm -f /etc/systemd/system/ngrok-n8n.service
 
-# 🧼 حذف الحاوية القديمة إن وُجدت
-echo "🧹 التحقق من وجود حاوية n8n قديمة..."
+# 🔥 حذف حاوية n8n إن وُجدت
 sudo docker stop n8n 2>/dev/null || true
 sudo docker rm n8n 2>/dev/null || true
 
-# تثبيت Docker إذا لم يكن مثبتًا
+# 🧼 حذف صورة n8n إن وُجدت
+sudo docker rmi n8nio/n8n 2>/dev/null || true
+
+# 🗑 حذف مجلد البيانات
+rm -rf ~/n8n_data
+
+# 📦 إعادة تحميل systemd بعد حذف الخدمة
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+
+echo "✅ تم حذف جميع آثار n8n و ngrok السابقة."
+
+echo "🚀 بدء تثبيت n8n وربطه بـ ngrok..."
+
+# 🧪 التأكد من أن Docker موجود
 if ! command -v docker &> /dev/null; then
   echo "🔧 تثبيت Docker..."
   sudo apt update
   sudo apt install -y docker.io
 fi
 
-# إنشاء مجلد بيانات n8n
+# 📁 إنشاء مجلد بيانات جديد
 mkdir -p ~/n8n_data
 sudo chown -R 1000:1000 ~/n8n_data
 
-# تثبيت ngrok إذا لم يكن موجودًا
+# 📥 تثبيت ngrok إذا لم يكن موجودًا
 if ! command -v ngrok &> /dev/null; then
   echo "⬇️ تثبيت ngrok..."
   wget -O ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
   sudo tar xvzf ngrok.tgz -C /usr/local/bin
+  rm ngrok.tgz
 fi
 
-# إعداد ngrok لحساب n8n
+# 🔐 إعداد توكن ngrok
 ngrok config add-authtoken 30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9
 
-# إنشاء systemd service ل ngrok
+# ⚙️ إعداد systemd لخدمة ngrok
 sudo bash -c 'cat > /etc/systemd/system/ngrok-n8n.service <<EOF
 [Unit]
 Description=Ngrok Tunnel for N8N
@@ -43,21 +61,20 @@ User=root
 WantedBy=multi-user.target
 EOF'
 
-# تفعيل خدمة ngrok
+# ▶️ تفعيل خدمة ngrok
 sudo systemctl daemon-reload
 sudo systemctl enable ngrok-n8n.service
 sudo systemctl start ngrok-n8n.service
 
-# 🔁 انتظار ngrok ليشتغل
 echo "⌛️ انتظار ngrok ليشتغل..."
 sleep 8
 
-# 📥 جلب رابط ngrok من الـ API المحلي
+# 🌐 جلب رابط ngrok
 NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
 
 echo "🌍 تم اكتشاف رابط ngrok: $NGROK_URL"
 
-# 🐳 تشغيل n8n بالحاوية مع إعداد OAuth الصحيح
+# 🐳 تشغيل n8n مع الإعدادات
 sudo docker run -d --name n8n \
   -p 5678:5678 \
   -v ~/n8n_data:/home/node/.n8n \
@@ -70,4 +87,4 @@ sudo docker run -d --name n8n \
   --restart unless-stopped \
   n8nio/n8n
 
-echo "✅ تم تشغيل n8n على: $NGROK_URL"
+echo "✅ تم تثبيت وتشغيل n8n على الرابط: $NGROK_URL"
