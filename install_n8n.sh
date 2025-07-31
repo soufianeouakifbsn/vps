@@ -6,6 +6,11 @@ NGROK_TOKEN="30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9"
 
 echo "🚀 بدء تثبيت n8n وربطه بـ ngrok..."
 
+# تحديث وترقية النظام وتثبيت الأدوات المطلوبة
+echo "🔄 تحديث وترقية النظام وتثبيت wget, git, jq ..."
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y wget git jq
+
 # 🧼 حذف الحاوية القديمة إن وُجدت
 echo "🧹 التحقق من وجود حاوية n8n قديمة..."
 sudo docker stop n8n 2>/dev/null || true
