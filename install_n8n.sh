@@ -26,7 +26,7 @@ if ! command -v ngrok &> /dev/null; then
 fi
 
 # إعداد ngrok لحساب n8n
-ngrok config add-authtoken 2N7U2BmqSbPX5ibsRPhpuyD8b1b_6CsuZXHCnLCrgHvqKvRCE
+ngrok config add-authtoken 30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9
 
 # إنشاء systemd service ل ngrok
 sudo bash -c 'cat > /etc/systemd/system/ngrok-n8n.service <<EOF
@@ -35,7 +35,7 @@ Description=Ngrok Tunnel for N8N
 After=network.target docker.service
 
 [Service]
-ExecStart=/usr/local/bin/ngrok http --domain=repeatedly-positive-deer.ngrok-free.app 5678
+ExecStart=/usr/local/bin/ngrok http --domain=jaybird-normal-publicly.ngrok-free.app 5678
 Restart=always
 User=root
 
@@ -64,7 +64,7 @@ sudo docker run -d --name n8n \
   -e N8N_BASIC_AUTH_ACTIVE=true \
   -e N8N_BASIC_AUTH_USER=admin \
   -e N8N_BASIC_AUTH_PASSWORD=admin123 \
-  -e N8N_HOST=repeatedly-positive-deer.ngrok-free.app \
+  -e N8N_HOST=jaybird-normal-publicly.ngrok-free.app \
   -e N8N_PROTOCOL=https \
   -e WEBHOOK_URL=$NGROK_URL \
   --restart unless-stopped \
