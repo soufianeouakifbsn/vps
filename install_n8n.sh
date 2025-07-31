@@ -1,7 +1,8 @@
 #!/bin/bash
 
 echo "🧨 إزالة كل ما يتعلق بـ n8n و ngrok..."
-# 🛑 إيقاف الخدمة إن وُجدت
+
+# 🛑 إيقاف ngrok إن وُجد
 sudo systemctl stop ngrok-n8n.service 2>/dev/null || true
 sudo systemctl disable ngrok-n8n.service 2>/dev/null || true
 sudo rm -f /etc/systemd/system/ngrok-n8n.service
@@ -10,21 +11,25 @@ sudo rm -f /etc/systemd/system/ngrok-n8n.service
 sudo docker stop n8n 2>/dev/null || true
 sudo docker rm n8n 2>/dev/null || true
 
-# 🧼 حذف صورة n8n إن وُجدت
+# 🧼 حذف صورة n8n
 sudo docker rmi n8nio/n8n 2>/dev/null || true
 
-# 🗑 حذف مجلد البيانات
+# 🗑 حذف مجلد بيانات n8n
 rm -rf ~/n8n_data
 
-# 📦 إعادة تحميل systemd بعد حذف الخدمة
+# 🧽 حذف سكربت install_n8n.sh من سطح المكتب
+rm -f ~/Desktop/install_n8n.sh 2>/dev/null || true
+rm -f ~/سطح\ المكتب/install_n8n.sh 2>/dev/null || true  # في حالة تعريب النظام
+
+# 🔄 تحديث systemd
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 
 echo "✅ تم حذف جميع آثار n8n و ngrok السابقة."
 
-echo "🚀 بدء تثبيت n8n وربطه بـ ngrok..."
+echo "🚀 بدء التثبيت الجديد لـ n8n وربطه بـ ngrok..."
 
-# 🧪 التأكد من أن Docker موجود
+# 🧪 تثبيت Docker إذا لم يكن موجودًا
 if ! command -v docker &> /dev/null; then
   echo "🔧 تثبيت Docker..."
   sudo apt update
