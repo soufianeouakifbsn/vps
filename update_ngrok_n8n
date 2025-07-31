@@ -3,8 +3,8 @@
 echo "🔄 تحديث إعدادات ngrok و n8n تلقائيًا..."
 
 # ⚙️ المتغيرات الجديدة (قم بتعديلها فقط)
-NEW_DOMAIN="yourdomain.ngrok-free.app"
-NEW_TOKEN="your-ngrok-auth-token"
+NEW_DOMAIN="jaybird-normal-publicly.ngrok-free.app"
+NEW_TOKEN="30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9"
 
 # 🛑 إيقاف خدمة ngrok القديمة
 echo "🛑 إيقاف خدمة ngrok القديمة..."
