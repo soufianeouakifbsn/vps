@@ -1,95 +1,77 @@
 #!/bin/bash
 
-echo "🧨 إزالة كل ما يتعلق بـ n8n و ngrok..."
+# 📌 المتغيرات (قم بتعديلهما حسب الحاجة)
+NGROK_DOMAIN="jaybird-normal-publicly.ngrok-free.app"
+NGROK_TOKEN="30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9"
 
-# 🛑 إيقاف ngrok إن وُجد
-sudo systemctl stop ngrok-n8n.service 2>/dev/null || true
-sudo systemctl disable ngrok-n8n.service 2>/dev/null || true
-sudo rm -f /etc/systemd/system/ngrok-n8n.service
+echo "🚀 بدء تثبيت n8n وربطه بـ ngrok..."
 
-# 🔥 حذف حاوية n8n إن وُجدت
+# 🧼 حذف الحاوية القديمة إن وُجدت
+echo "🧹 التحقق من وجود حاوية n8n قديمة..."
 sudo docker stop n8n 2>/dev/null || true
 sudo docker rm n8n 2>/dev/null || true
 
-# 🧼 حذف صورة n8n
-sudo docker rmi n8nio/n8n 2>/dev/null || true
-
-# 🗑 حذف مجلد بيانات n8n
-rm -rf ~/n8n_data
-
-# 🧽 حذف سكربت install_n8n.sh من سطح المكتب
-rm -f ~/Desktop/install_n8n.sh 2>/dev/null || true
-rm -f ~/سطح\ المكتب/install_n8n.sh 2>/dev/null || true  # في حالة تعريب النظام
-
-# 🔄 تحديث systemd
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload
-
-echo "✅ تم حذف جميع آثار n8n و ngrok السابقة."
-
-echo "🚀 بدء التثبيت الجديد لـ n8n وربطه بـ ngrok..."
-
-# 🧪 تثبيت Docker إذا لم يكن موجودًا
+# تثبيت Docker إذا لم يكن مثبتًا
 if ! command -v docker &> /dev/null; then
   echo "🔧 تثبيت Docker..."
   sudo apt update
   sudo apt install -y docker.io
 fi
 
-# 📁 إنشاء مجلد بيانات جديد
+# إنشاء مجلد بيانات n8n
 mkdir -p ~/n8n_data
 sudo chown -R 1000:1000 ~/n8n_data
 
-# 📥 تثبيت ngrok إذا لم يكن موجودًا
+# تثبيت ngrok إذا لم يكن موجودًا
 if ! command -v ngrok &> /dev/null; then
   echo "⬇️ تثبيت ngrok..."
   wget -O ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
   sudo tar xvzf ngrok.tgz -C /usr/local/bin
-  rm ngrok.tgz
 fi
 
-# 🔐 إعداد توكن ngrok
-ngrok config add-authtoken 30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9
+# إعداد ngrok بحسابك باستخدام المتغيرات
+ngrok config add-authtoken "$NGROK_TOKEN"
 
-# ⚙️ إعداد systemd لخدمة ngrok
-sudo bash -c 'cat > /etc/systemd/system/ngrok-n8n.service <<EOF
+# إنشاء systemd service لـ ngrok
+sudo bash -c "cat > /etc/systemd/system/ngrok-n8n.service <<EOF
 [Unit]
 Description=Ngrok Tunnel for N8N
 After=network.target docker.service
 
 [Service]
-ExecStart=/usr/local/bin/ngrok http --domain=jaybird-normal-publicly.ngrok-free.app 5678
+ExecStart=/usr/local/bin/ngrok http --domain=$NGROK_DOMAIN 5678
 Restart=always
 User=root
 
 [Install]
 WantedBy=multi-user.target
-EOF'
+EOF"
 
-# ▶️ تفعيل خدمة ngrok
+# تفعيل خدمة ngrok
 sudo systemctl daemon-reload
 sudo systemctl enable ngrok-n8n.service
 sudo systemctl start ngrok-n8n.service
 
+# 🔁 انتظار ngrok ليشتغل
 echo "⌛️ انتظار ngrok ليشتغل..."
 sleep 8
 
-# 🌐 جلب رابط ngrok
+# 📥 جلب رابط ngrok من الـ API المحلي
 NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
 
 echo "🌍 تم اكتشاف رابط ngrok: $NGROK_URL"
 
-# 🐳 تشغيل n8n مع الإعدادات
+# 🐳 تشغيل n8n بالحاوية مع إعداد OAuth الصحيح
 sudo docker run -d --name n8n \
   -p 5678:5678 \
   -v ~/n8n_data:/home/node/.n8n \
   -e N8N_BASIC_AUTH_ACTIVE=true \
   -e N8N_BASIC_AUTH_USER=admin \
   -e N8N_BASIC_AUTH_PASSWORD=admin123 \
-  -e N8N_HOST=jaybird-normal-publicly.ngrok-free.app \
+  -e N8N_HOST="$NGROK_DOMAIN" \
   -e N8N_PROTOCOL=https \
-  -e WEBHOOK_URL=$NGROK_URL \
+  -e WEBHOOK_URL="$NGROK_URL" \
   --restart unless-stopped \
   n8nio/n8n
 
-echo "✅ تم تثبيت وتشغيل n8n على الرابط: $NGROK_URL"
+echo "✅ تم تشغيل n8n على: $NGROK_URL"
