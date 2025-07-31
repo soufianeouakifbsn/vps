@@ -42,7 +42,7 @@ sudo docker run -d --name n8n \
   -p 5678:5678 \
   -v ~/n8n_data:/home/node/.n8n \
   -e N8N_BASIC_AUTH_ACTIVE=true \
-  -e N8N_BASIC_AUTH_USER=admin \
+  -e N8N_BASIC_AUTH_USER=admin@gmail.com \
   -e N8N_BASIC_AUTH_PASSWORD=admin123 \
   -e N8N_HOST=$NEW_DOMAIN \
   -e N8N_PROTOCOL=https \
