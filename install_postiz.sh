@@ -39,7 +39,6 @@ services:
       FRONTEND_URL: "https://$DOMAIN"
       NEXT_PUBLIC_BACKEND_URL: "https://$DOMAIN/api"
       JWT_SECRET: "$JWT_SECRET"
-
       DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
       REDIS_URL: "redis://postiz-redis:6379"
       BACKEND_INTERNAL_URL: "http://localhost:3000/"
@@ -47,7 +46,7 @@ services:
     volumes:
       - postiz-config:/config/
     ports:
-      - 5000:5000
+      - 3000:3000   # تعديل البورت إلى 3000
     networks:
       - postiz-network
     depends_on:
@@ -120,7 +119,7 @@ server {
     server_name $DOMAIN;
 
     location / {
-        proxy_pass http://localhost:5000;
+        proxy_pass http://localhost:3000;   # تعديل البورت إلى 3000
         proxy_http_version 1.1;
         proxy_set_header Upgrade \\\$http_upgrade;
         proxy_set_header Connection 'upgrade';
