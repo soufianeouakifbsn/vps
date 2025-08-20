@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 📌 المتغيرات
+# 📌 المتغيراتs
 DOMAIN="coolify.soufianeautomation.space"   # غيّر حسب الدومين الخاص بك
 EMAIL="soufianeouakifbsn@gmail.com"       # بريدك لإدارة SSL
 COOLIFY_PORT=3000                          # المنفذ الافتراضي لـCoolify
