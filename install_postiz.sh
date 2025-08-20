@@ -46,7 +46,7 @@ services:
     volumes:
       - postiz-config:/config/
     ports:
-      - 3000:3000   # تعديل البورت إلى 3000
+      - 3000:3000
     networks:
       - postiz-network
     depends_on:
@@ -73,7 +73,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
       interval: 10s
       timeout: 3s
-      retries: 3
+      retries: 5
 
   postiz-redis:
     image: redis:7.2
@@ -85,7 +85,7 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
-      retries: 3
+      retries: 5
     volumes:
       - postiz-redis-data:/data
     networks:
@@ -109,6 +109,14 @@ EOF
 # ▶️ تشغيل Postiz
 sudo docker compose up -d
 
+# ⏳ الانتظار حتى تكون الحاوية جاهزة
+echo "⏳ الانتظار حتى تشغيل Postiz..."
+until sudo docker exec postiz curl -s http://localhost:3000 >/dev/null 2>&1; do
+  echo "🚀 Postiz لا يزال يبدأ... الانتظار 5 ثواني"
+  sleep 5
+done
+echo "✅ Postiz جاهز!"
+
 # 🌐 تثبيت Nginx و Certbot
 sudo apt install -y nginx certbot python3-certbot-nginx
 
@@ -119,7 +127,7 @@ server {
     server_name $DOMAIN;
 
     location / {
-        proxy_pass http://localhost:3000;   # تعديل البورت إلى 3000
+        proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \\\$http_upgrade;
         proxy_set_header Connection 'upgrade';
