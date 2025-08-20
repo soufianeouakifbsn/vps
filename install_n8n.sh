@@ -21,11 +21,11 @@ sudo docker stop n8n 2>/dev/null || true
 sudo docker rm n8n 2>/dev/null || true
 sudo rm -rf ~/n8n_data
 
-# إنشاء مجلد بيانات n8n جديد (فارغ → تسجيل من 0)
+# إنشاء مجلد بيانات n8n (لحفظ كل الداتا بشكل دائم)
 mkdir -p ~/n8n_data
 sudo chown -R 1000:1000 ~/n8n_data
 
-# 🐳 تشغيل n8n في Docker (بدون Basic Auth)
+# 🐳 تشغيل n8n في Docker (مع ربط البيانات)
 sudo docker run -d --name n8n \
   -p 5678:5678 \
   -v ~/n8n_data:/home/node/.n8n \
@@ -33,7 +33,7 @@ sudo docker run -d --name n8n \
   -e N8N_PROTOCOL=https \
   -e WEBHOOK_URL="https://$DOMAIN" \
   --restart unless-stopped \
-  n8nio/n8n
+  n8nio/n8n:latest
 
 # 🔧 إعداد Nginx كـ Reverse Proxy
 sudo tee /etc/nginx/sites-available/n8n.conf > /dev/null <<EOF
@@ -62,6 +62,15 @@ sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
 
-echo "✅ تم تثبيت n8n بنجاح!"
+# 🛡️ تثبيت Watchtower للتحديث التلقائي
+sudo docker stop watchtower 2>/dev/null || true
+sudo docker rm watchtower 2>/dev/null || true
+sudo docker run -d \
+  --name watchtower \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  containrrr/watchtower n8n --cleanup --interval 3600
+
+echo "✅ تم تثبيت n8n مع التحديث التلقائي!"
 echo "🌍 افتح الرابط: https://$DOMAIN"
-echo "🎉 سيظهر لك صفحة التسجيل لأول مرة (ضع إيميلك وكلمة السر الخاصة بك)."
+echo "🎉 أول مرة سيظهر لك صفحة التسجيل (Register)."
+echo "🔄 Watchtower سيتحقق كل ساعة من وجود تحديث جديد لـ n8n ويطبقه تلقائيًا."
