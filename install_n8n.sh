@@ -2,9 +2,7 @@
 
 # 📌 المتغيرات
 DOMAIN="n8n.soufianeautomation.space"
-EMAIL="your@email.com"   # بريدك لإدارة SSL
-N8N_USER="admin"
-N8N_PASS="admin123"
+EMAIL="your@email.com"   # ضع بريدك هنا لإدارة SSL من Let's Encrypt
 
 echo "🚀 بدء تثبيت n8n على $DOMAIN ..."
 
@@ -18,20 +16,19 @@ sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx
 sudo systemctl enable docker
 sudo systemctl start docker
 
-# إنشاء مجلد بيانات n8n
+# 🧹 حذف n8n القديم إن وجد
+sudo docker stop n8n 2>/dev/null || true
+sudo docker rm n8n 2>/dev/null || true
+sudo rm -rf ~/n8n_data
+
+# إنشاء مجلد بيانات n8n جديد (فارغ → تسجيل من 0)
 mkdir -p ~/n8n_data
 sudo chown -R 1000:1000 ~/n8n_data
 
-# 🐳 تشغيل n8n في Docker
-sudo docker stop n8n 2>/dev/null || true
-sudo docker rm n8n 2>/dev/null || true
-
+# 🐳 تشغيل n8n في Docker (بدون Basic Auth)
 sudo docker run -d --name n8n \
   -p 5678:5678 \
   -v ~/n8n_data:/home/node/.n8n \
-  -e N8N_BASIC_AUTH_ACTIVE=true \
-  -e N8N_BASIC_AUTH_USER=$N8N_USER \
-  -e N8N_BASIC_AUTH_PASSWORD=$N8N_PASS \
   -e N8N_HOST="$DOMAIN" \
   -e N8N_PROTOCOL=https \
   -e WEBHOOK_URL="https://$DOMAIN" \
@@ -54,7 +51,7 @@ server {
 EOF
 
 # تفعيل الموقع
-sudo ln -s /etc/nginx/sites-available/n8n.conf /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/n8n.conf /etc/nginx/sites-enabled/ || true
 sudo nginx -t && sudo systemctl restart nginx
 
 # 🔒 الحصول على SSL من Let's Encrypt
@@ -67,5 +64,4 @@ sudo ufw --force enable
 
 echo "✅ تم تثبيت n8n بنجاح!"
 echo "🌍 افتح الرابط: https://$DOMAIN"
-echo "👤 المستخدم: $N8N_USER"
-echo "🔑 كلمة المرور: $N8N_PASS"
+echo "🎉 سيظهر لك صفحة التسجيل لأول مرة (ضع إيميلك وكلمة السر الخاصة بك)."
