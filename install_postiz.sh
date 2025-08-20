@@ -10,7 +10,7 @@ sudo apt install -y curl git unzip nginx certbot python3-certbot-nginx docker.io
 # تحميل Postiz
 # -----------------------------
 cd /opt
-sudo git clone https://github.com/gitroomhq/postiz.git
+sudo git clone https://github.com/gitroomhq/postiz-app
 cd postiz
 
 # -----------------------------
