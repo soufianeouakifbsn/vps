@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 📌 المتغيرات
-DOMAIN="n8n.soufianeautomation.space"
-EMAIL="your@email.com"   # ضع بريدك هنا لإدارة SSL من Let's Encrypt
+DOMAIN="n8n.soufianeautomation.space"   # غيّر حسب الدومين الخاص بك
+EMAIL="soufianeouakifbsn@gmail.com"                  # ضع بريدك هنا لإدارة SSL
 
 echo "🚀 بدء تثبيت n8n على $DOMAIN ..."
 
@@ -19,7 +19,6 @@ sudo systemctl start docker
 # 🧹 حذف n8n القديم إن وجد
 sudo docker stop n8n 2>/dev/null || true
 sudo docker rm n8n 2>/dev/null || true
-sudo rm -rf ~/n8n_data
 
 # إنشاء مجلد بيانات n8n (لحفظ كل الداتا بشكل دائم)
 mkdir -p ~/n8n_data
@@ -35,17 +34,29 @@ sudo docker run -d --name n8n \
   --restart unless-stopped \
   n8nio/n8n:next
 
-# 🔧 إعداد Nginx كـ Reverse Proxy
+# 🔧 إعداد Nginx كـ Reverse Proxy مع WebSocket + Timeout
 sudo tee /etc/nginx/sites-available/n8n.conf > /dev/null <<EOF
 server {
     server_name $DOMAIN;
 
     location / {
         proxy_pass http://127.0.0.1:5678;
+
+        # ✅ دعم WebSocket
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # ✅ تمرير الهيدر بشكل صحيح
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # ✅ منع انقطاع الاتصال (Connection lost)
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        send_timeout 3600s;
     }
 }
 EOF
@@ -70,7 +81,7 @@ sudo docker run -d \
   -v /var/run/docker.sock:/var/run/docker.sock \
   containrrr/watchtower n8n --cleanup --interval 3600
 
-echo "✅ تم تثبيت n8n (مع أحدث إصدار دائمًا عبر :next)!"
-echo "🌍 افتح الرابط: https://$DOMAIN"
+echo "✅ تم تثبيت n8n على https://$DOMAIN"
 echo "🎉 أول مرة سيظهر لك صفحة التسجيل (Register)."
 echo "🔄 Watchtower سيتحقق كل ساعة من وجود تحديث جديد لـ n8n ويطبقه تلقائيًا."
+echo "🔧 تم إصلاح مشكلة Connection lost عن طريق WebSocket + timeout في Nginx."
