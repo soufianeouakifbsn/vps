@@ -78,16 +78,19 @@ server {
 
     location / {
         proxy_pass http://localhost:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \\\$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \\\$host;
+        proxy_set_header X-Real-IP \\\$remote_addr;
+        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \\\$scheme;
     }
 }
 NGINX_CONF"
 
 # 🔗 تفعيل الموقع
-sudo ln -s /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/ || true
 sudo nginx -t && sudo systemctl restart nginx
 
 # 🔒 إعداد SSL
