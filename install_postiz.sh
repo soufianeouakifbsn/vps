@@ -2,7 +2,7 @@
 
 # 📌 متغيراتك الأساسية
 DOMAIN="postiz.soufianeautomation.space"
-EMAIL="your@email.com"   # بريدك لـ SSL
+EMAIL="your@email.com"
 JWT_SECRET="ChangeThisToSomethingRandom123"
 
 echo "🚀 بدء تثبيت Postiz على $DOMAIN"
@@ -25,7 +25,7 @@ fi
 mkdir -p ~/postiz
 cd ~/postiz
 
-# ✍️ إنشاء ملف docker-compose.yml
+# ✍️ إنشاء ملف docker-compose.yml مع wait-for-it
 cat > docker-compose.yml <<EOF
 version: '3.9'
 
@@ -41,7 +41,7 @@ services:
       JWT_SECRET: "$JWT_SECRET"
       DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
       REDIS_URL: "redis://postiz-redis:6379"
-      BACKEND_INTERNAL_URL: "http://localhost:3000/"
+      BACKEND_INTERNAL_URL: "http://0.0.0.0:3000/"
       IS_GENERAL: "true"
     volumes:
       - postiz-config:/config/
@@ -73,7 +73,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
       interval: 10s
       timeout: 3s
-      retries: 5
+      retries: 10
 
   postiz-redis:
     image: redis:7.2
@@ -85,7 +85,7 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
-      retries: 5
+      retries: 10
     volumes:
       - postiz-redis-data:/data
     networks:
@@ -94,10 +94,8 @@ services:
 volumes:
   postgres-volume:
     external: false
-
   postiz-redis-data:
     external: false
-
   postiz-config:
     external: false
 
@@ -109,9 +107,9 @@ EOF
 # ▶️ تشغيل Postiz
 sudo docker compose up -d
 
-# ⏳ الانتظار حتى تكون الحاوية جاهزة
+# ⏳ الانتظار حتى تكون Postiz جاهزة
 echo "⏳ الانتظار حتى تشغيل Postiz..."
-until sudo docker exec postiz curl -s http://localhost:3000 >/dev/null 2>&1; do
+until sudo docker exec postiz curl -s http://0.0.0.0:3000 >/dev/null 2>&1; do
   echo "🚀 Postiz لا يزال يبدأ... الانتظار 5 ثواني"
   sleep 5
 done
@@ -127,7 +125,7 @@ server {
     server_name $DOMAIN;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \\\$http_upgrade;
         proxy_set_header Connection 'upgrade';
