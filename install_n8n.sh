@@ -33,7 +33,7 @@ sudo docker run -d --name n8n \
   -e N8N_PROTOCOL=https \
   -e WEBHOOK_URL="https://$DOMAIN" \
   --restart unless-stopped \
-  n8nio/n8n:latest
+  n8nio/n8n:next
 
 # 🔧 إعداد Nginx كـ Reverse Proxy
 sudo tee /etc/nginx/sites-available/n8n.conf > /dev/null <<EOF
@@ -70,7 +70,7 @@ sudo docker run -d \
   -v /var/run/docker.sock:/var/run/docker.sock \
   containrrr/watchtower n8n --cleanup --interval 3600
 
-echo "✅ تم تثبيت n8n مع التحديث التلقائي!"
+echo "✅ تم تثبيت n8n (مع أحدث إصدار دائمًا عبر :next)!"
 echo "🌍 افتح الرابط: https://$DOMAIN"
 echo "🎉 أول مرة سيظهر لك صفحة التسجيل (Register)."
 echo "🔄 Watchtower سيتحقق كل ساعة من وجود تحديث جديد لـ n8n ويطبقه تلقائيًا."
