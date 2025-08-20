@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 📌 المتغيراتs
+# 📌 المتغيرات
 DOMAIN="coolify.soufianeautomation.space"   # غيّر حسب الدومين الخاص بك
 EMAIL="soufianeouakifbsn@gmail.com"       # بريدك لإدارة SSL
 COOLIFY_PORT=3000                          # المنفذ الافتراضي لـCoolify
@@ -32,6 +32,16 @@ sudo docker run -d --name coolify \
   --restart unless-stopped \
   coollabsio/coolify:latest
 
+# ✅ انتظار تشغيل الحاوية والتحقق من المنفذ
+echo "⏳ الانتظار حتى تعمل الحاوية على المنفذ $COOLIFY_PORT ..."
+sleep 10
+if ! curl -s "http://127.0.0.1:$COOLIFY_PORT" >/dev/null; then
+    echo "❌ خطأ: الحاوية لا تعمل على المنفذ $COOLIFY_PORT"
+    echo "تحقق من سجلات الحاوية باستخدام: sudo docker logs coolify -f"
+    exit 1
+fi
+echo "✅ الحاوية تعمل بشكل صحيح"
+
 # 🔧 إعداد Nginx كـ Reverse Proxy
 sudo tee /etc/nginx/sites-available/coolify.conf > /dev/null <<EOF
 server {
@@ -59,9 +69,9 @@ server {
 }
 EOF
 
-# تفعيل الموقع
-sudo ln -s /etc/nginx/sites-available/coolify.conf /etc/nginx/sites-enabled/ || true
-sudo nginx -t && sudo systemctl restart nginx
+# تفعيل الموقع وإعادة تحميل Nginx
+sudo ln -sf /etc/nginx/sites-available/coolify.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 
 # 🔒 الحصول على SSL من Let's Encrypt
 sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
