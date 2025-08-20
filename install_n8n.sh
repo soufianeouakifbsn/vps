@@ -1,87 +1,71 @@
 #!/bin/bash
 
-# 📌 المتغيرات (قم بتعديلهما حسب الحاجة)
-NGROK_DOMAIN="jaybird-normal-publicly.ngrok-free.app"
-NGROK_TOKEN="30Pd47TWZRWjAwhfEhsW8cb2XwI_3beapEPSsBZuiuCiSPJN9"
+# 📌 المتغيرات
+DOMAIN="n8n.soufianeautomation.space"
+EMAIL="your@email.com"   # بريدك لإدارة SSL
+N8N_USER="admin"
+N8N_PASS="admin123"
 
-echo "🚀 بدء تثبيت n8n وربطه بـ ngrok..."
+echo "🚀 بدء تثبيت n8n على $DOMAIN ..."
 
-# تحديث وترقية النظام وتثبيت الأدوات المطلوبة
-echo "🔄 تحديث وترقية النظام وتثبيت wget, git, jq ..."
+# تحديث النظام
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y wget git jq
 
-# 🧼 حذف الحاوية القديمة إن وُجدت
-echo "🧹 التحقق من وجود حاوية n8n قديمة..."
-sudo docker stop n8n 2>/dev/null || true
-sudo docker rm n8n 2>/dev/null || true
+# تثبيت الأدوات الأساسية
+sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw
 
-# تثبيت Docker إذا لم يكن مثبتًا
-if ! command -v docker &> /dev/null; then
-  echo "🔧 تثبيت Docker..."
-  sudo apt update
-  sudo apt install -y docker.io
-fi
+# تفعيل Docker
+sudo systemctl enable docker
+sudo systemctl start docker
 
 # إنشاء مجلد بيانات n8n
 mkdir -p ~/n8n_data
 sudo chown -R 1000:1000 ~/n8n_data
 
-# تثبيت ngrok إذا لم يكن موجودًا
-if ! command -v ngrok &> /dev/null; then
-  echo "⬇️ تثبيت ngrok..."
-  wget -O ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
-  sudo tar xvzf ngrok.tgz -C /usr/local/bin
-fi
+# 🐳 تشغيل n8n في Docker
+sudo docker stop n8n 2>/dev/null || true
+sudo docker rm n8n 2>/dev/null || true
 
-# إعداد ngrok بحسابك باستخدام المتغيرات
-ngrok config add-authtoken "$NGROK_TOKEN"
-
-# حذف أي خدمة ngrok-n8n قديمة
-sudo systemctl stop ngrok-n8n.service 2>/dev/null || true
-sudo systemctl disable ngrok-n8n.service 2>/dev/null || true
-sudo rm /etc/systemd/system/ngrok-n8n.service 2>/dev/null || true
-
-# إنشاء systemd service لـ ngrok
-sudo bash -c "cat > /etc/systemd/system/ngrok-n8n.service <<EOF
-[Unit]
-Description=Ngrok Tunnel for N8N
-After=network.target docker.service
-
-[Service]
-ExecStart=/usr/local/bin/ngrok http --domain=$NGROK_DOMAIN 5678
-Restart=always
-User=root
-
-[Install]
-WantedBy=multi-user.target
-EOF"
-
-# تفعيل خدمة ngrok
-sudo systemctl daemon-reload
-sudo systemctl enable ngrok-n8n.service
-sudo systemctl start ngrok-n8n.service
-
-# 🔁 انتظار ngrok ليشتغل
-echo "⌛️ انتظار ngrok ليشتغل..."
-sleep 8
-
-# 📥 جلب رابط ngrok من الـ API المحلي
-NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
-
-echo "🌍 تم اكتشاف رابط ngrok: $NGROK_URL"
-
-# 🐳 تشغيل n8n بالحاوية مع إعداد OAuth الصحيح
 sudo docker run -d --name n8n \
   -p 5678:5678 \
   -v ~/n8n_data:/home/node/.n8n \
   -e N8N_BASIC_AUTH_ACTIVE=true \
-  -e N8N_BASIC_AUTH_USER=admin \
-  -e N8N_BASIC_AUTH_PASSWORD=admin123 \
-  -e N8N_HOST="$NGROK_DOMAIN" \
+  -e N8N_BASIC_AUTH_USER=$N8N_USER \
+  -e N8N_BASIC_AUTH_PASSWORD=$N8N_PASS \
+  -e N8N_HOST="$DOMAIN" \
   -e N8N_PROTOCOL=https \
-  -e WEBHOOK_URL="$NGROK_URL" \
+  -e WEBHOOK_URL="https://$DOMAIN" \
   --restart unless-stopped \
   n8nio/n8n
 
-echo "✅ تم تشغيل n8n على: $NGROK_URL"
+# 🔧 إعداد Nginx كـ Reverse Proxy
+sudo tee /etc/nginx/sites-available/n8n.conf > /dev/null <<EOF
+server {
+    server_name $DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:5678;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+# تفعيل الموقع
+sudo ln -s /etc/nginx/sites-available/n8n.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
+
+# 🔒 الحصول على SSL من Let's Encrypt
+sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
+
+# فتح الجدار الناري (UFW)
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw --force enable
+
+echo "✅ تم تثبيت n8n بنجاح!"
+echo "🌍 افتح الرابط: https://$DOMAIN"
+echo "👤 المستخدم: $N8N_USER"
+echo "🔑 كلمة المرور: $N8N_PASS"
