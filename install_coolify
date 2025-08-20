@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# 📌 المتغيرات
+DOMAIN="coolify.soufianeautomation.space"   # غيّر حسب الدومين الخاص بك
+EMAIL="soufianeouakifbsn@gmail.com"       # بريدك لإدارة SSL
+COOLIFY_PORT=3000                          # المنفذ الافتراضي لـCoolify
+
+echo "🚀 بدء تثبيت Coolify على $DOMAIN ..."
+
+# تحديث النظام
+sudo apt update && sudo apt upgrade -y
+
+# تثبيت الأدوات الأساسية
+sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw git
+
+# تفعيل Docker
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# 🧹 حذف Coolify القديم إن وجد
+sudo docker stop coolify 2>/dev/null || true
+sudo docker rm coolify 2>/dev/null || true
+
+# إنشاء مجلد بيانات Coolify
+mkdir -p ~/coolify_data
+sudo chown -R 1000:1000 ~/coolify_data
+
+# 🐳 تشغيل Coolify في Docker
+sudo docker run -d --name coolify \
+  -p $COOLIFY_PORT:3000 \
+  -v ~/coolify_data:/app/data \
+  --restart unless-stopped \
+  coollabsio/coolify:latest
+
+# 🔧 إعداد Nginx كـ Reverse Proxy
+sudo tee /etc/nginx/sites-available/coolify.conf > /dev/null <<EOF
+server {
+    server_name $DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:$COOLIFY_PORT;
+
+        # ✅ دعم WebSocket
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # ✅ تمرير الهيدر بشكل صحيح
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # ✅ منع انقطاع الاتصال
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        send_timeout 3600s;
+    }
+}
+EOF
+
+# تفعيل الموقع
+sudo ln -s /etc/nginx/sites-available/coolify.conf /etc/nginx/sites-enabled/ || true
+sudo nginx -t && sudo systemctl restart nginx
+
+# 🔒 الحصول على SSL من Let's Encrypt
+sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
+
+# فتح الجدار الناري (UFW)
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw --force enable
+
+# 🛡️ تثبيت Watchtower للتحديث التلقائي
+sudo docker stop watchtower 2>/dev/null || true
+sudo docker rm watchtower 2>/dev/null || true
+sudo docker run -d \
+  --name watchtower \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  containrrr/watchtower coolify --cleanup --interval 3600
+
+echo "✅ تم تثبيت Coolify على https://$DOMAIN"
+echo "🎉 افتح المتصفح لتسجيل الدخول لأول مرة."
+echo "🔄 Watchtower سيتحقق كل ساعة من وجود تحديث جديد لـCoolify ويطبقه تلقائيًا."
