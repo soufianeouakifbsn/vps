@@ -35,6 +35,11 @@ services:
       POSTGRES_DB: postizdb
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postiz -d postizdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   redis:
@@ -42,7 +47,27 @@ services:
     container_name: postiz_redis
     volumes:
       - ./redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
+
+  migrate:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: postiz_migrate
+    environment:
+      DATABASE_URL: "postgresql://postiz:postizpass@postgresql:5432/postizdb"
+      REDIS_URL: "redis://redis:6379"
+    command: >
+      sh -c "pnpm prisma db push --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "on-failure"
 
   postiz:
     image: ghcr.io/gitroomhq/postiz-app:latest
@@ -54,8 +79,12 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - postgresql
-      - redis
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 EOF
 
