@@ -47,60 +47,12 @@ FRONTEND_PORT=4200
 FRONTEND_URL=https://postiz.soufianeautomation.space
 
 # -----------------
-# Pinterest
-# -----------------
-PINTEREST_CLIENT_ID=xxxxx
-PINTEREST_CLIENT_SECRET=xxxxx
-PINTEREST_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/pinterest/callback
-
-# -----------------
-# LinkedIn
-# -----------------
-LINKEDIN_CLIENT_ID=xxxxx
-LINKEDIN_CLIENT_SECRET=xxxxx
-LINKEDIN_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/linkedin/callback
-
-# -----------------
 # Google / YouTube
 # -----------------
-GOOGLE_CLIENT_ID=xxxxx
-GOOGLE_CLIENT_SECRET=xxxxx
+GOOGLE_CLIENT_ID=478210438973-sbmd1ir93kifi2r0u3chk3i18fg4sj6k.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/google/callback
 
-# -----------------
-# Facebook
-# -----------------
-FACEBOOK_CLIENT_ID=xxxxx
-FACEBOOK_CLIENT_SECRET=xxxxx
-FACEBOOK_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/facebook/callback
-
-# -----------------
-# Instagram
-# -----------------
-INSTAGRAM_CLIENT_ID=xxxxx
-INSTAGRAM_CLIENT_SECRET=xxxxx
-INSTAGRAM_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/instagram/callback
-
-# -----------------
-# Twitter (X)
-# -----------------
-TWITTER_CLIENT_ID=xxxxx
-TWITTER_CLIENT_SECRET=xxxxx
-TWITTER_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/twitter/callback
-
-# -----------------
-# TikTok
-# -----------------
-TIKTOK_CLIENT_ID=xxxxx
-TIKTOK_CLIENT_SECRET=xxxxx
-TIKTOK_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/tiktok/callback
-
-# -----------------
-# Reddit
-# -----------------
-REDDIT_CLIENT_ID=xxxxx
-REDDIT_CLIENT_SECRET=xxxxx
-REDDIT_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/reddit/callback
 EOL
 
 # -----------------------------
