@@ -55,7 +55,7 @@ FRONTEND_PORT=4200
 FRONTEND_URL=https://postiz.soufianeautomation.space
 
 # -----------------
-# Google / YouTube
+# Google / YouTube (Placeholders)
 # -----------------
 GOOGLE_CLIENT_ID=478210438973-sbmd1ir93kifi2r0u3chk3i18fg4sj6k.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=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
@@ -147,3 +147,4 @@ sudo certbot --nginx -d postiz.soufianeautomation.space -d postiz-api.soufianeau
 echo "✅ تم تثبيت Postiz بنجاح!"
 echo "Frontend: https://postiz.soufianeautomation.space"
 echo "Backend API: https://postiz-api.soufianeautomation.space"
+echo "⚠️ تنبيه: تسجيل الدخول عبر Google لن يشتغل حتى تضع CLIENT_ID و CLIENT_SECRET الصحيحين في ملف .env"
