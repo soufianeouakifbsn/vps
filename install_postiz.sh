@@ -1,32 +1,35 @@
 #!/bin/bash
 
-# 📌 Variables
-DOMAIN="postiz.soufianeautomation.space"  # Your domain
-EMAIL="soufianeouakifbsn@gmail.com"     # Your email for Let's Encrypt
-JWT_SECRET=$(openssl rand -base64 32)   # Generate a random JWT secret
-POSTIZ_PORT="5000"                      # Exposed port for Postiz
+# ==============================
+# 📌 إعداد المتغيرات
+# ==============================
+DOMAIN="postiz.soufianeautomation.space"
+EMAIL="soufianeouakifbsn@gmail.com"
+POSTIZ_DIR=~/postiz
 
-echo "🚀 Starting Postiz installation on $DOMAIN ..."
+echo "🚀 بدء تثبيت Postiz على $DOMAIN ..."
 
-# 🔄 Update system and install required tools
+# ==============================
+# تحديث النظام وتثبيت المتطلبات
+# ==============================
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw
 
-# 🐳 Enable and start Docker
+# تفعيل Docker
 sudo systemctl enable docker
 sudo systemctl start docker
 
-# 🧹 Clean up any existing Postiz containers
-sudo docker stop postiz postiz-postgres postiz-redis 2>/dev/null || true
-sudo docker rm postiz postiz-postgres postiz-redis 2>/dev/null || true
+# ==============================
+# إنشاء مجلد المشروع
+# ==============================
+mkdir -p $POSTIZ_DIR
+cd $POSTIZ_DIR
 
-# 📂 Create directories for Postiz volumes
-mkdir -p ~/postiz/config ~/postiz/uploads
-sudo chown -R 1000:1000 ~/postiz
-
-# 📝 Create Docker Compose file for Postiz
-cat <<EOF > ~/postiz/docker-compose.yml
-version: '3.8'
+# ==============================
+# إنشاء ملف docker-compose.yml
+# ==============================
+cat > docker-compose.yml <<EOF
+version: '3.9'
 
 services:
   postiz:
@@ -37,7 +40,7 @@ services:
       MAIN_URL: "https://$DOMAIN"
       FRONTEND_URL: "https://$DOMAIN"
       NEXT_PUBLIC_BACKEND_URL: "https://$DOMAIN/api"
-      JWT_SECRET: "$JWT_SECRET"
+      JWT_SECRET: "CHANGE_ME_RANDOM_SECRET_$(openssl rand -hex 16)"
       DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
       REDIS_URL: "redis://postiz-redis:6379"
       BACKEND_INTERNAL_URL: "http://localhost:3000"
@@ -47,10 +50,10 @@ services:
       UPLOAD_DIRECTORY: "/uploads"
       NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
     volumes:
-      - ~/postiz/config:/config/
-      - ~/postiz/uploads:/uploads/
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
     ports:
-      - $POSTIZ_PORT:5000
+      - 5000:5000
     networks:
       - postiz-network
     depends_on:
@@ -68,11 +71,11 @@ services:
       POSTGRES_USER: postiz-user
       POSTGRES_DB: postiz-db-local
     volumes:
-      - ~/postiz/postgres-data:/var/lib/postgresql/data
+      - postgres-volume:/var/lib/postgresql/data
     networks:
       - postiz-network
     healthcheck:
-      test: pg_isready -U postiz-user -d postiz-db-local
+      test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -82,12 +85,12 @@ services:
     container_name: postiz-redis
     restart: always
     healthcheck:
-      test: redis-cli ping
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
     volumes:
-      - ~/postiz/redis-data:/data
+      - postiz-redis-data:/data
     networks:
       - postiz-network
 
@@ -101,24 +104,31 @@ networks:
   postiz-network:
 EOF
 
-# 🚀 Start Postiz services
-cd ~/postiz
+# ==============================
+# تشغيل الحاويات
+# ==============================
+sudo docker-compose down || true
 sudo docker-compose up -d
 
-# 🔧 Configure Nginx as Reverse Proxy
+# ==============================
+# إعداد Nginx كـ Reverse Proxy
+# ==============================
 sudo tee /etc/nginx/sites-available/postiz.conf > /dev/null <<EOF
 server {
     server_name $DOMAIN;
 
     location / {
-        proxy_pass http://127.0.0.1:$POSTIZ_PORT;
+        proxy_pass http://127.0.0.1:5000;
+
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
+
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
         send_timeout 3600s;
@@ -126,26 +136,19 @@ server {
 }
 EOF
 
-# 🔗 Enable Nginx configuration
 sudo ln -s /etc/nginx/sites-available/postiz.conf /etc/nginx/sites-enabled/ || true
 sudo nginx -t && sudo systemctl restart nginx
 
-# 🔒 Obtain SSL certificate from Let's Encrypt
+# ==============================
+# تفعيل SSL عبر Let's Encrypt
+# ==============================
 sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
 
-# 🛡️ Configure firewall (UFW)
+# ==============================
+# ضبط الجدار الناري UFW
+# ==============================
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
 
-# 🛠️ Install Watchtower for automatic updates
-sudo docker stop watchtower 2>/dev/null || true
-sudo docker rm watchtower 2>/dev/null || true
-sudo docker run -d \
-  --name watchtower \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  containrrr/watchtower postiz --cleanup --interval 3600
-
-echo "✅ Postiz installed successfully at https://$DOMAIN"
-echo "🎉 Access the Postiz web interface to complete setup."
-echo "🔄 Watchtower will check for Postiz updates every hour."
+echo "✅ تم تثبيت Postiz بنجاح على https://$DOMAIN"
