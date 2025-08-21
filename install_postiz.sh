@@ -18,6 +18,14 @@ sudo git clone https://github.com/gitroomhq/postiz-app postiz
 cd postiz
 
 # -----------------------------
+# تأكد من وجود docker-compose.yml
+# -----------------------------
+if [ ! -f "docker-compose.yml" ]; then
+  echo "⚠️  ملف docker-compose.yml غير موجود، سيتم تحميله من الريبو..."
+  curl -o docker-compose.yml https://raw.githubusercontent.com/gitroomhq/postiz-app/main/docker-compose.yml
+fi
+
+# -----------------------------
 # إنشاء ملف البيئة (backend + frontend + منصات التواصل)
 # -----------------------------
 cat > .env <<EOL
@@ -52,7 +60,6 @@ FRONTEND_URL=https://postiz.soufianeautomation.space
 GOOGLE_CLIENT_ID=478210438973-sbmd1ir93kifi2r0u3chk3i18fg4sj6k.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/google/callback
-
 EOL
 
 # -----------------------------
@@ -86,7 +93,7 @@ EOL
 # -----------------------------
 # تشغيل الكونتينرات
 # -----------------------------
-sudo docker-compose up -d --build
+sudo docker compose up -d --build
 
 # -----------------------------
 # إعداد Nginx للـ frontend
