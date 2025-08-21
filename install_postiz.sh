@@ -1,10 +1,9 @@
 #!/bin/bash
 
-# 📌 إعداد المتغيرات
+# 📌 متغيراتك الأساسية
 DOMAIN="postiz.soufianeautomation.space"
-EMAIL="your@email.com"   # بريدك من أجل SSL Let's Encrypt
-POSTGRES_PASSWORD="SuperSecretPass123"
-JWT_SECRET="ChangeThisToLongRandomString"
+EMAIL="your@email.com"   # بريدك لـ SSL
+JWT_SECRET="ChangeThisToSomethingRandom123"
 
 echo "🚀 بدء تثبيت Postiz على $DOMAIN"
 
@@ -28,43 +27,87 @@ cd ~/postiz
 
 # ✍️ إنشاء ملف docker-compose.yml
 cat > docker-compose.yml <<EOF
-version: '3.8'
+version: '3.9'
+
 services:
-  database:
-    image: postgres:15
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postiz
-      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
-      POSTGRES_DB: postiz
-    volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7
-    restart: unless-stopped
-    volumes:
-      - ./redis_data:/data
-
   postiz:
-    image: gitroomhq/postiz-app:latest
-    restart: unless-stopped
-    depends_on:
-      - database
-      - redis
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: postiz
+    restart: always
     environment:
-      DATABASE_URL: "postgresql://postiz:$POSTGRES_PASSWORD@database:5432/postiz"
-      REDIS_URL: "redis://redis:6379"
-      JWT_SECRET: "$JWT_SECRET"
+      MAIN_URL: "https://$DOMAIN"
       FRONTEND_URL: "https://$DOMAIN"
-      NEXT_PUBLIC_BACKEND_URL: "https://$DOMAIN"
-      BACKEND_INTERNAL_URL: "http://postiz:3000"
-    expose:
-      - "3000"
-      - "5000"
+      NEXT_PUBLIC_BACKEND_URL: "https://$DOMAIN/api"
+      JWT_SECRET: "$JWT_SECRET"
+
+      DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
+      REDIS_URL: "redis://postiz-redis:6379"
+      BACKEND_INTERNAL_URL: "http://localhost:3000/"
+      IS_GENERAL: "true"
+    volumes:
+      - postiz-config:/config/
+    ports:
+      - 5000:5000
+    networks:
+      - postiz-network
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_healthy
+
+  postiz-postgres:
+    image: postgres:14.5
+    container_name: postiz-postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postiz-password
+      POSTGRES_USER: postiz-user
+      POSTGRES_DB: postiz-db-local
+    volumes:
+      - postgres-volume:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      - postiz-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  postiz-redis:
+    image: redis:7.2
+    container_name: postiz-redis
+    restart: always
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - postiz-redis-data:/data
+    networks:
+      - postiz-network
+
+volumes:
+  postgres-volume:
+    external: false
+
+  postiz-redis-data:
+    external: false
+
+  postiz-config:
+    external: false
+
+networks:
+  postiz-network:
+    external: false
 EOF
 
-# ▶️ تشغيل Postiz لأول مرة
+# ▶️ تشغيل Postiz
 sudo docker compose up -d
 
 # 🌐 تثبيت Nginx و Certbot
@@ -96,4 +139,4 @@ sudo nginx -t && sudo systemctl restart nginx
 # 🔒 إعداد SSL
 sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
 
-echo "✅ تم التثبيت بنجاح! الآن افتح: https://$DOMAIN"
+echo "✅ تم التثبيت بنجاح! افتح: https://$DOMAIN"
