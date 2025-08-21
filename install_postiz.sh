@@ -26,13 +26,7 @@ if [ ! -f "docker-compose.yml" ]; then
 fi
 
 # -----------------------------
-# طلب Google OAuth credentials من المستخدم
-# -----------------------------
-read -p "👉 Enter your Google CLIENT_ID: " GOOGLE_ID
-read -p "👉 Enter your Google CLIENT_SECRET: " GOOGLE_SECRET
-
-# -----------------------------
-# إنشاء ملف البيئة (.env)
+# إنشاء ملف البيئة (.env) مع Google OAuth جاهز
 # -----------------------------
 cat > .env <<EOL
 # -----------------
@@ -61,10 +55,10 @@ FRONTEND_PORT=4200
 FRONTEND_URL=https://postiz.soufianeautomation.space
 
 # -----------------
-# Google / YouTube
+# Google / YouTube (Configured Automatically)
 # -----------------
-GOOGLE_CLIENT_ID=${GOOGLE_ID}
-GOOGLE_CLIENT_SECRET=${GOOGLE_SECRET}
+GOOGLE_CLIENT_ID=478210438973-sbmd1ir93kifi2r0u3chk3i18fg4sj6k.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/google/callback
 EOL
 
@@ -153,4 +147,4 @@ sudo certbot --nginx -d postiz.soufianeautomation.space -d postiz-api.soufianeau
 echo "✅ تم تثبيت Postiz بنجاح!"
 echo "Frontend: https://postiz.soufianeautomation.space"
 echo "Backend API: https://postiz-api.soufianeautomation.space"
-echo "🎯 Google OAuth جاهز. إذا Client ID و Secret صحيحين، تسجيل الدخول وربط YouTube سيعمل الآن."
+echo "🎯 Google OAuth جاهز باستخدام CLIENT_ID و CLIENT_SECRET اللي تحطوا تلقائيًا"
