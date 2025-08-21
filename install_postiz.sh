@@ -20,7 +20,7 @@ sudo systemctl start docker
 sudo docker stop postiz 2>/dev/null || true
 sudo docker rm postiz 2>/dev/null || true
 
-# إنشاء مجلد بيانات Postiz (لحفظ كل الداتا بشكل دائم)
+# إنشاء مجلد بيانات Postiz
 mkdir -p ~/postiz_data
 sudo chown -R 1000:1000 ~/postiz_data
 
@@ -32,7 +32,15 @@ sudo docker run -d --name postiz \
   --restart unless-stopped \
   ghcr.io/gitroomhq/postiz-app:latest
 
-# 🔧 إعداد Nginx كـ Reverse Proxy مع Timeout مناسب
+# ✅ الانتظار للتأكد من أن الحاوية تعمل
+sleep 10
+if [ "$(sudo docker inspect -f '{{.State.Running}}' postiz)" != "true" ]; then
+  echo "❌ خطأ: حاوية Postiz لم تعمل بنجاح. تحقق من logs:"
+  sudo docker logs postiz
+  exit 1
+fi
+
+# 🔧 إعداد Nginx كـ Reverse Proxy
 sudo tee /etc/nginx/sites-available/postiz.conf > /dev/null <<EOF
 server {
     server_name $DOMAIN;
@@ -47,9 +55,9 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
 
         # ✅ منع انقطاع الاتصال
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-        send_timeout 3600s;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+        send_timeout 600s;
     }
 }
 EOF
