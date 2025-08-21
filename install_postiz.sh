@@ -18,52 +18,29 @@ sudo git clone https://github.com/gitroomhq/postiz-app postiz
 cd postiz
 
 # -----------------------------
-# تأكد من وجود docker-compose.yml
-# -----------------------------
-if [ ! -f "docker-compose.yml" ]; then
-  echo "⚠️  ملف docker-compose.yml غير موجود، سيتم تحميله من الريبو..."
-  curl -o docker-compose.yml https://raw.githubusercontent.com/gitroomhq/postiz-app/main/docker-compose.yml
-fi
-
-# -----------------------------
-# إنشاء ملف البيئة (.env) مع Google OAuth جاهز
+# إنشاء ملف البيئة (backend + frontend)
 # -----------------------------
 cat > .env <<EOL
-# -----------------
 # Postgres
-# -----------------
 POSTGRES_USER=postiz
 POSTGRES_PASSWORD=postizpass
 POSTGRES_DB=postiz
 
-# -----------------
 # Redis
-# -----------------
 REDIS_HOST=redis
 REDIS_PORT=6379
 
-# -----------------
 # Backend
-# -----------------
 PORT=3000
 BACKEND_URL=https://postiz-api.soufianeautomation.space
 
-# -----------------
 # Frontend
-# -----------------
 FRONTEND_PORT=4200
 FRONTEND_URL=https://postiz.soufianeautomation.space
-
-# -----------------
-# Google / YouTube (Configured Automatically)
-# -----------------
-GOOGLE_CLIENT_ID=478210438973-sbmd1ir93kifi2r0u3chk3i18fg4sj6k.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
-GOOGLE_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/google/callback
 EOL
 
 # -----------------------------
-# docker-compose.override.yml
+# docker-compose.yml (تحديث البورتات)
 # -----------------------------
 cat > docker-compose.override.yml <<EOL
 version: "3.8"
@@ -93,7 +70,7 @@ EOL
 # -----------------------------
 # تشغيل الكونتينرات
 # -----------------------------
-sudo docker compose up -d --build
+sudo docker-compose up -d --build
 
 # -----------------------------
 # إعداد Nginx للـ frontend
@@ -140,11 +117,10 @@ sudo ln -s /etc/nginx/sites-available/postiz-backend /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 
 # -----------------------------
-# شهادة SSL
+# شهادة SSL (مع --expand لتفادي التعارض)
 # -----------------------------
 sudo certbot --nginx -d postiz.soufianeautomation.space -d postiz-api.soufianeautomation.space --expand --non-interactive --agree-tos -m admin@soufianeautomation.space
 
 echo "✅ تم تثبيت Postiz بنجاح!"
 echo "Frontend: https://postiz.soufianeautomation.space"
 echo "Backend API: https://postiz-api.soufianeautomation.space"
-echo "🎯 Google OAuth جاهز باستخدام CLIENT_ID و CLIENT_SECRET اللي تحطوا تلقائيًا"
