@@ -1,79 +1,106 @@
 #!/bin/bash
 
-# 📌 Variables
-DOMAIN="postiz.soufianeautomation.space"   # Replace with your actual domain
-EMAIL="soufianeouakifbsn@gmail.com"   # Replace with your email for Let's Encrypt SSL
+# 📌 المتغيرات
+DOMAIN="postiz.soufianeautomation.space"    # غيّر للدومين الخاص بك
+EMAIL="soufianeouakifbsn@gmail.com"        # بريدك للحصول على SSL
+POSTIZ_DATA="$HOME/postiz_data"
 
-echo "🚀 Starting Postiz installation on $DOMAIN ..."
+echo "🚀 بدء التثبيت التلقائي لـ Postiz على $DOMAIN ..."
 
-# Update the system
+# تحديث النظام
 sudo apt update && sudo apt upgrade -y
 
-# Install essential tools
-sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw
+# تثبيت الأدوات الأساسية
+sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw git
 
-# Enable and start Docker
+# تفعيل Docker
 sudo systemctl enable docker
 sudo systemctl start docker
 
-# 🧹 Clean up any existing Postiz containers
-sudo docker stop postiz 2>/dev/null || true
-sudo docker rm postiz 2>/dev/null || true
+# إنشاء مجلد البيانات
+mkdir -p $POSTIZ_DATA
+sudo chown -R 1000:1000 $POSTIZ_DATA
 
-# Create a directory for Postiz data (persistent storage)
-mkdir -p ~/postiz_data
-sudo chown -R 1000:1000 ~/postiz_data
+# إنشاء ملف Docker Compose
+tee $POSTIZ_DATA/docker-compose.yml > /dev/null <<EOF
+version: '3.9'
 
-# 🐳 Run Postiz in Docker
-sudo docker run -d --name postiz \
-  -p 5000:5000 \
-  -v ~/postiz_data:/app/data \
-  -e POSTIZ_HOST="$DOMAIN" \
-  -e POSTIZ_PROTOCOL=https \
-  -e WEBHOOK_URL="https://$DOMAIN" \
-  --restart unless-stopped \
-  ghcr.io/postiz-app/postiz:latest
+services:
+  postgresql:
+    image: postgres:15
+    container_name: postiz_postgres
+    environment:
+      POSTGRES_USER: postiz
+      POSTGRES_PASSWORD: postizpass
+      POSTGRES_DB: postizdb
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
-# 🔧 Set up Nginx as a Reverse Proxy with WebSocket support
+  redis:
+    image: redis:7
+    container_name: postiz_redis
+    volumes:
+      - ./redis_data:/data
+    restart: unless-stopped
+
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: postiz
+    environment:
+      MAIN_URL: "https://$DOMAIN"
+      DATABASE_URL: "postgresql://postiz:postizpass@postgresql:5432/postizdb"
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgresql
+      - redis
+    restart: unless-stopped
+EOF
+
+# تشغيل Docker Compose
+cd $POSTIZ_DATA
+sudo docker-compose up -d
+
+# ✅ التأكد من تشغيل الحاويات
+sleep 15
+echo "🔹 حالة الحاويات:"
+sudo docker-compose ps
+
+# إعداد Nginx كـ Reverse Proxy
 sudo tee /etc/nginx/sites-available/postiz.conf > /dev/null <<EOF
 server {
     server_name $DOMAIN;
 
     location / {
-        proxy_pass http://127.0.0.1:5000;
+        proxy_pass http://127.0.0.1:3000;
 
-        # ✅ WebSocket support
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-
-        # ✅ Pass headers correctly
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
 
-        # ✅ Prevent connection timeout issues
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-        send_timeout 3600s;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+        send_timeout 600s;
     }
 }
 EOF
 
-# Enable the Nginx site
+# تفعيل الموقع وإعادة تشغيل Nginx
 sudo ln -s /etc/nginx/sites-available/postiz.conf /etc/nginx/sites-enabled/ || true
 sudo nginx -t && sudo systemctl restart nginx
 
-# 🔒 Obtain SSL certificate from Let's Encrypt
+# الحصول على SSL من Let's Encrypt
 sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
 
-# Open firewall (UFW)
+# فتح الجدار الناري
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
 
-# 🛡️ Install Watchtower for automatic updates
+# تثبيت Watchtower للتحديث التلقائي
 sudo docker stop watchtower 2>/dev/null || true
 sudo docker rm watchtower 2>/dev/null || true
 sudo docker run -d \
@@ -81,7 +108,5 @@ sudo docker run -d \
   -v /var/run/docker.sock:/var/run/docker.sock \
   containrrr/watchtower postiz --cleanup --interval 3600
 
-echo "✅ Postiz installed successfully at https://$DOMAIN"
-echo "🎉 On first access, you may see a registration or setup page."
-echo "🔄 Watchtower will check for Postiz updates every hour and apply them automatically."
-echo "🔧 WebSocket and timeout issues are handled via Nginx configuration."
+echo "✅ تم تثبيت Postiz بالكامل على https://$DOMAIN"
+echo "🎉 افتح الموقع لإنشاء الحساب وبدء الاستخدام!"
