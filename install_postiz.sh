@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 
 # -----------------------------
 # تحديث النظام + تثبيت الأدوات
@@ -8,13 +7,10 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl git unzip nginx certbot python3-certbot-nginx docker.io docker-compose
 
 # -----------------------------
-# تحميل Postiz (مع تنظيف المجلد القديم لو موجود)
+# تحميل Postiz
 # -----------------------------
 cd /opt
-if [ -d "postiz" ]; then
-  sudo rm -rf postiz
-fi
-sudo git clone https://github.com/gitroomhq/postiz-app postiz
+sudo git clone https://github.com/gitroomhq/postiz-app
 cd postiz
 
 # -----------------------------
@@ -105,21 +101,16 @@ server {
 EOF
 
 # -----------------------------
-# تنظيف أي روابط قديمة + تفعيل الجديدة
+# تفعيل الكونفيغ
 # -----------------------------
-sudo rm -f /etc/nginx/sites-enabled/postiz-frontend
-sudo rm -f /etc/nginx/sites-enabled/postiz-backend
-sudo rm -f /etc/nginx/sites-enabled/default
-
 sudo ln -s /etc/nginx/sites-available/postiz-frontend /etc/nginx/sites-enabled/
 sudo ln -s /etc/nginx/sites-available/postiz-backend /etc/nginx/sites-enabled/
-
 sudo nginx -t && sudo systemctl reload nginx
 
 # -----------------------------
-# شهادة SSL (مع --expand لتفادي التعارض)
+# شهادة SSL
 # -----------------------------
-sudo certbot --nginx -d postiz.soufianeautomation.space -d postiz-api.soufianeautomation.space --expand --non-interactive --agree-tos -m admin@soufianeautomation.space
+sudo certbot --nginx -d postiz.soufianeautomation.space -d postiz-api.soufianeautomation.space --non-interactive --agree-tos -m admin@soufianeautomation.space
 
 echo "✅ تم تثبيت Postiz بنجاح!"
 echo "Frontend: https://postiz.soufianeautomation.space"
