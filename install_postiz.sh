@@ -20,7 +20,6 @@ sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx
 
 # تفعيل Docker
 @@ -19,123 +18,113 @@ sudo systemctl start docker
-
 # إنشاء مجلد البيانات
 mkdir -p $POSTIZ_DATA
 sudo chown -R 1000:1000 $POSTIZ_DATA
