@@ -4,8 +4,8 @@ set -e
 # ==========================
 # 🔧 Variables (Edit these)
 # ==========================
-DOMAIN="postiz.example.com"
-EMAIL="youremail@example.com"
+DOMAIN="postiz.soufianeautomation.space"
+EMAIL="soufianeouakifbsn@gmail.com"
 
 # ==========================
 echo "🔄 Updating system..."
