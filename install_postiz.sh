@@ -1,213 +1,208 @@
 #!/bin/bash
+set -euo pipefail
 
-# 📌 المتغيرات
-DOMAIN="postiz.soufianeautomation.space"    # غيّر للدومين الخاص بك
-EMAIL="soufianeouakifbsn@gmail.com"        # بريدك للحصول على SSL
-DOMAIN="postiz.soufianeautomation.space"
-EMAIL="soufianeouakifbsn@gmail.com"
-POSTIZ_DATA="$HOME/postiz_data"
-
-echo "🚀 بدء التثبيت التلقائي لـ Postiz على $DOMAIN ..."
-echo "🚀 Starting Postiz installation on $DOMAIN ..."
-
-# تحديث النظام
+# -----------------------------
+# تحديث النظام + تثبيت الأدوات
+# -----------------------------
 sudo apt update && sudo apt upgrade -y
+sudo apt install -y curl git unzip nginx certbot python3-certbot-nginx docker.io docker-compose
 
-# تثبيت الأدوات الأساسية
-# تثبيت الأدوات
-sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw git
+# -----------------------------
+# تحميل Postiz (مع تنظيف المجلد القديم لو موجود)
+# -----------------------------
+cd /opt
+if [ -d "postiz" ]; then
+  sudo rm -rf postiz
+fi
+sudo git clone https://github.com/gitroomhq/postiz-app postiz
+cd postiz
 
-# تفعيل Docker
-@@ -19,123 +18,113 @@ sudo systemctl start docker
+# -----------------------------
+# تأكد من وجود docker-compose.yml
+# -----------------------------
+if [ ! -f "docker-compose.yml" ]; then
+  echo "⚠️  ملف docker-compose.yml غير موجود، سيتم تحميله من الريبو..."
+  curl -o docker-compose.yml https://raw.githubusercontent.com/gitroomhq/postiz-app/main/docker-compose.yml
+fi
 
-# إنشاء مجلد البيانات
-mkdir -p $POSTIZ_DATA
-sudo chown -R 1000:1000 $POSTIZ_DATA
-cd $POSTIZ_DATA
+# -----------------------------
+# إنشاء ملف البيئة (backend + frontend + منصات التواصل)
+# -----------------------------
+cat > .env <<EOL
+# -----------------
+# Postgres
+# -----------------
+POSTGRES_USER=postiz
+POSTGRES_PASSWORD=postizpass
+POSTGRES_DB=postiz
 
-# إنشاء ملف Docker Compose
-tee $POSTIZ_DATA/docker-compose.yml > /dev/null <<EOF
-# إنشاء ملف docker-compose.yml
-tee docker-compose.yml > /dev/null <<EOF
-version: '3.9'
+# -----------------
+# Redis
+# -----------------
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# -----------------
+# Backend
+# -----------------
+PORT=3000
+BACKEND_URL=https://postiz-api.soufianeautomation.space
+
+# -----------------
+# Frontend
+# -----------------
+FRONTEND_PORT=4200
+FRONTEND_URL=https://postiz.soufianeautomation.space
+
+# -----------------
+# Google / YouTube
+# -----------------
+GOOGLE_CLIENT_ID=xxxxx
+GOOGLE_CLIENT_SECRET=xxxxx
+GOOGLE_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/google/callback
+
+# -----------------
+# LinkedIn
+# -----------------
+LINKEDIN_CLIENT_ID=xxxxx
+LINKEDIN_CLIENT_SECRET=xxxxx
+LINKEDIN_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/linkedin/callback
+
+# -----------------
+# Pinterest
+# -----------------
+PINTEREST_CLIENT_ID=xxxxx
+PINTEREST_CLIENT_SECRET=xxxxx
+PINTEREST_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/pinterest/callback
+
+# -----------------
+# Facebook
+# -----------------
+FACEBOOK_CLIENT_ID=xxxxx
+FACEBOOK_CLIENT_SECRET=xxxxx
+FACEBOOK_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/facebook/callback
+
+# -----------------
+# Instagram
+# -----------------
+INSTAGRAM_CLIENT_ID=xxxxx
+INSTAGRAM_CLIENT_SECRET=xxxxx
+INSTAGRAM_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/instagram/callback
+
+# -----------------
+# Twitter (X)
+# -----------------
+TWITTER_CLIENT_ID=xxxxx
+TWITTER_CLIENT_SECRET=xxxxx
+TWITTER_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/twitter/callback
+
+# -----------------
+# TikTok
+# -----------------
+TIKTOK_CLIENT_ID=xxxxx
+TIKTOK_CLIENT_SECRET=xxxxx
+TIKTOK_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/tiktok/callback
+
+# -----------------
+# Reddit
+# -----------------
+REDDIT_CLIENT_ID=xxxxx
+REDDIT_CLIENT_SECRET=xxxxx
+REDDIT_REDIRECT_URL=https://postiz-api.soufianeautomation.space/auth/reddit/callback
+EOL
+
+# -----------------------------
+# docker-compose.override.yml
+# -----------------------------
+cat > docker-compose.override.yml <<EOL
+version: "3.8"
 
 services:
-  postgresql:
-    image: postgres:15
-    container_name: postiz_postgres
+  backend:
     environment:
-      POSTGRES_USER: postiz
-      POSTGRES_PASSWORD: postizpass
-      POSTGRES_DB: postizdb
-    volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postiz -d postizdb"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
-  redis:
-    image: redis:7
-    container_name: postiz_redis
-    volumes:
-      - ./redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
-  migrate:
-    image: ghcr.io/gitroomhq/postiz-app:latest
-    container_name: postiz_migrate
-    environment:
-      DATABASE_URL: "postgresql://postiz:postizpass@postgresql:5432/postizdb"
-      REDIS_URL: "redis://redis:6379"
-    command: >
-      sh -c "pnpm prisma db push --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma"
-    depends_on:
-      postgresql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: "on-failure"
-
-  postiz:
-    image: ghcr.io/gitroomhq/postiz-app:latest
-    container_name: postiz
-    restart: always
-    environment:
-      MAIN_URL: "https://$DOMAIN"
-      DATABASE_URL: "postgresql://postiz:postizpass@postgresql:5432/postizdb"
-      REDIS_URL: "redis://redis:6379"
-      FRONTEND_URL: "https://$DOMAIN"
-      NEXT_PUBLIC_BACKEND_URL: "https://$DOMAIN/api"
-      JWT_SECRET: "CHANGE_ME_RANDOM_SECRET_$(openssl rand -hex 16)"
-      DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
-      REDIS_URL: "redis://postiz-redis:6379"
-      BACKEND_INTERNAL_URL: "http://localhost:3000"
-      IS_GENERAL: "true"
-      DISABLE_REGISTRATION: "false"
-      STORAGE_PROVIDER: "local"
-      UPLOAD_DIRECTORY: "/uploads"
-      NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
-    volumes:
-      - postiz-config:/config/
-      - postiz-uploads:/uploads/
+      - PORT=3000
     ports:
       - "3000:3000"
-      - 5000:5000
-    networks:
-      - postiz-network
-    depends_on:
-      postgresql:
-      postiz-postgres:
-        condition: service_healthy
-      redis:
-      postiz-redis:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    restart: unless-stopped
 
-  postiz-postgres:
-    image: postgres:17-alpine
-    container_name: postiz-postgres
-    restart: always
+  frontend:
     environment:
-      POSTGRES_PASSWORD: postiz-password
-      POSTGRES_USER: postiz-user
-      POSTGRES_DB: postiz-db-local
-    volumes:
-      - postgres-volume:/var/lib/postgresql/data
-    networks:
-      - postiz-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      - PORT=4200
+    ports:
+      - "4200:4200"
 
-  postiz-redis:
-    image: redis:7.2
-    container_name: postiz-redis
-    restart: always
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    volumes:
-      - postiz-redis-data:/data
-    networks:
-      - postiz-network
+  postgres:
+    ports:
+      - "5432:5432"
 
-volumes:
-  postgres-volume:
-  postiz-redis-data:
-  postiz-config:
-  postiz-uploads:
+  redis:
+    ports:
+      - "6379:6379"
+EOL
 
-networks:
-  postiz-network:
-EOF
+# -----------------------------
+# تشغيل الكونتينرات
+# -----------------------------
+sudo docker-compose up -d --build
 
-# تشغيل Docker Compose
-cd $POSTIZ_DATA
-# تشغيل الخدمات
-sudo docker-compose up -d
-
-# ✅ التأكد من تشغيل الحاويات
-sleep 15
-echo "🔹 حالة الحاويات:"
-sudo docker-compose ps
-
-# إعداد Nginx كـ Reverse Proxy
-sudo tee /etc/nginx/sites-available/postiz.conf > /dev/null <<EOF
+# -----------------------------
+# إعداد Nginx للـ frontend
+# -----------------------------
+sudo tee /etc/nginx/sites-available/postiz-frontend <<'EOF'
 server {
-    server_name $DOMAIN;
+    server_name postiz.soufianeautomation.space;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_pass http://127.0.0.1:5000;
-
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-
-        proxy_read_timeout 600s;
-        proxy_send_timeout 600s;
-        send_timeout 600s;
+        proxy_pass http://127.0.0.1:4200;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 EOF
 
-# تفعيل الموقع وإعادة تشغيل Nginx
-sudo ln -s /etc/nginx/sites-available/postiz.conf /etc/nginx/sites-enabled/ || true
-sudo nginx -t && sudo systemctl restart nginx
+# إعداد Nginx للـ backend API
+sudo tee /etc/nginx/sites-available/postiz-backend <<'EOF'
+server {
+    server_name postiz-api.soufianeautomation.space;
 
-# الحصول على SSL من Let's Encrypt
-# SSL
-sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
 
-# فتح الجدار الناري
-# Firewall
-sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
-sudo ufw --force enable
+# -----------------------------
+# تنظيف أي روابط قديمة + تفعيل الجديدة
+# -----------------------------
+sudo rm -f /etc/nginx/sites-enabled/postiz-frontend
+sudo rm -f /etc/nginx/sites-enabled/postiz-backend
+sudo rm -f /etc/nginx/sites-enabled/default
 
-# تثبيت Watchtower للتحديث التلقائي
-sudo docker stop watchtower 2>/dev/null || true
-sudo docker rm watchtower 2>/dev/null || true
-sudo docker run -d \
-  --name watchtower \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  containrrr/watchtower postiz --cleanup --interval 3600
+sudo ln -s /etc/nginx/sites-available/postiz-frontend /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/postiz-backend /etc/nginx/sites-enabled/
 
-echo "✅ تم تثبيت Postiz بالكامل على https://$DOMAIN"
-echo "🎉 افتح الموقع لإنشاء الحساب وبدء الاستخدام!"
-echo "✅ Postiz installed successfully on https://$DOMAIN"
+sudo nginx -t && sudo systemctl reload nginx
+
+# -----------------------------
+# شهادة SSL
+# -----------------------------
+sudo certbot --nginx -d postiz.soufianeautomation.space -d postiz-api.soufianeautomation.space --expand --non-interactive --agree-tos -m admin@soufianeautomation.space
+
+echo "✅ تم تثبيت Postiz بنجاح!"
+echo "Frontend: https://postiz.soufianeautomation.space"
+echo "Backend API: https://postiz-api.soufianeautomation.space"
+echo "⚠️ تذكير: ضع CLIENT_ID و CLIENT_SECRET الصحيحين في ملف .env لكل منصة."
+echo "➡️ ثم أضف هذه Redirect URIs في إعدادات التطبيقات:"
+echo "   - Google/YouTube:   https://postiz-api.soufianeautomation.space/auth/google/callback"
+echo "   - LinkedIn:         https://postiz-api.soufianeautomation.space/auth/linkedin/callback"
+echo "   - Pinterest:        https://postiz-api.soufianeautomation.space/auth/pinterest/callback"
+echo "   - Facebook:         https://postiz-api.soufianeautomation.space/auth/facebook/callback"
+echo "   - Instagram:        https://postiz-api.soufianeautomation.space/auth/instagram/callback"
+echo "   - Twitter (X):      https://postiz-api.soufianeautomation.space/auth/twitter/callback"
+echo "   - TikTok:           https://postiz-api.soufianeautomation.space/auth/tiktok/callback"
+echo "   - Reddit:           https://postiz-api.soufianeautomation.space/auth/reddit/callback"
