@@ -1,89 +1,34 @@
-#!/usr/bin/env bash
-set -euo pipefail
-# wget https://raw.githubusercontent.com/soufianeouakifbsn/vps/refs/heads/main/install_postiz.sh -O install_postiz.sh && chmod +x install_postiz.sh && ./install_postiz.sh
-# ===============================
-# 🚀 Script Install Postiz (Ubuntu 24.04)
-# ===============================
+#!/bin/bash
 
+# ==============================
+# 📌 إعداد المتغيرات
+# ==============================
 DOMAIN="postiz.soufianeautomation.space"
-POSTGRES_PASSWORD="StrongPass123!"
-ENV_FILE=".env"
+EMAIL="soufianeouakifbsn@gmail.com"
+POSTIZ_DIR=~/postiz
 
-echo "🚀 Starting Postiz installation..."
+echo "🚀 بدء تثبيت Postiz على $DOMAIN ..."
 
-# 1) Update & Install dependencies
-echo "📦 Installing dependencies..."
-sudo apt-get remove docker docker-engine docker.io containerd runc -y || true
-sudo apt update -y
-sudo apt upgrade -y
-sudo apt install -y ca-certificates curl gnupg lsb-release
+# ==============================
+# تحديث النظام وتثبيت المتطلبات
+# ==============================
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw
 
-# 2) Setup Docker official repo
-echo "🐳 Setting up Docker repository..."
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
+# تفعيل Docker
+sudo systemctl enable docker
+sudo systemctl start docker
 
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+# ==============================
+# إنشاء مجلد المشروع
+# ==============================
+mkdir -p $POSTIZ_DIR
+cd $POSTIZ_DIR
 
-sudo apt update -y
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-sudo systemctl enable --now docker
-
-# 3) Clean previous Postiz (if exists)
-echo "🧹 Removing any old Postiz installation..."
-docker compose down -v || true
-rm -f docker-compose.yml "${ENV_FILE}" docker-compose.override.yml || true
-docker system prune -af --volumes || true
-
-# 4) Create .env file
-echo "📝 Creating ${ENV_FILE}..."
-cat > "${ENV_FILE}" <<EOF
-# 🌐 Main URL
-MAIN_URL=https://${DOMAIN}
-
-# 🗄️ Database
-POSTGRES_USER=postiz
-POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-POSTGRES_DB=postiz
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-
-# 🔑 App secret
-APP_SECRET=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 48)
-
-# ☁️ Google OAuth (YouTube)
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_CALLBACK_URL=https://${DOMAIN}/auth/callback/google
-
-# 📘 Facebook OAuth
-FACEBOOK_CLIENT_ID=your-facebook-app-id
-FACEBOOK_CLIENT_SECRET=your-facebook-app-secret
-FACEBOOK_CALLBACK_URL=https://${DOMAIN}/auth/callback/facebook
-
-# 🐦 Twitter/X OAuth
-TWITTER_CLIENT_ID=your-twitter-client-id
-TWITTER_CLIENT_SECRET=your-twitter-client-secret
-TWITTER_CALLBACK_URL=https://${DOMAIN}/auth/callback/twitter
-
-# 💼 LinkedIn OAuth
-LINKEDIN_CLIENT_ID=your-linkedin-client-id
-LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret
-LINKEDIN_CALLBACK_URL=https://${DOMAIN}/auth/callback/linkedin
-
-# 📸 Instagram OAuth (عبر Facebook App)
-INSTAGRAM_CLIENT_ID=your-instagram-client-id
-INSTAGRAM_CLIENT_SECRET=your-instagram-client-secret
-INSTAGRAM_CALLBACK_URL=https://${DOMAIN}/auth/callback/instagram
-EOF
-
-# 5) Create docker-compose.yml
-echo "📝 Creating docker-compose.yml..."
-cat > docker-compose.yml <<'YAML'
+# ==============================
+# إنشاء ملف docker-compose.yml
+# ==============================
+cat > docker-compose.yml <<EOF
 version: '3.9'
 
 services:
@@ -91,46 +36,119 @@ services:
     image: ghcr.io/gitroomhq/postiz-app:latest
     container_name: postiz
     restart: always
+    environment:
+      MAIN_URL: "https://$DOMAIN"
+      FRONTEND_URL: "https://$DOMAIN"
+      NEXT_PUBLIC_BACKEND_URL: "https://$DOMAIN/api"
+      JWT_SECRET: "CHANGE_ME_RANDOM_SECRET_$(openssl rand -hex 16)"
+      DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
+      REDIS_URL: "redis://postiz-redis:6379"
+      BACKEND_INTERNAL_URL: "http://localhost:3000"
+      IS_GENERAL: "true"
+      DISABLE_REGISTRATION: "false"
+      STORAGE_PROVIDER: "local"
+      UPLOAD_DIRECTORY: "/uploads"
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
+    volumes:
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
     ports:
-      - "5000:5000"
-    env_file:
-      - .env
+      - 5000:5000
+    networks:
+      - postiz-network
     depends_on:
-      - postgres
-      - redis
+      postiz-postgres:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_healthy
 
-  postgres:
-    image: postgres:15
-    container_name: postiz_postgres
+  postiz-postgres:
+    image: postgres:17-alpine
+    container_name: postiz-postgres
     restart: always
     environment:
-      POSTGRES_USER: postiz
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: postiz
+      POSTGRES_PASSWORD: postiz-password
+      POSTGRES_USER: postiz-user
+      POSTGRES_DB: postiz-db-local
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-volume:/var/lib/postgresql/data
+    networks:
+      - postiz-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
-  redis:
-    image: redis:7
-    container_name: postiz_redis
+  postiz-redis:
+    image: redis:7.2
+    container_name: postiz-redis
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
     volumes:
-      - redis_data:/data
+      - postiz-redis-data:/data
+    networks:
+      - postiz-network
 
 volumes:
-  postgres_data:
-  redis_data:
-YAML
+  postgres-volume:
+  postiz-redis-data:
+  postiz-config:
+  postiz-uploads:
 
-# 6) Start Postiz
-echo "🚀 Starting Postiz..."
-docker compose up -d
+networks:
+  postiz-network:
+EOF
 
-echo
-echo "✅ Postiz installed successfully!"
-echo "➡️ Go to: https://${DOMAIN}"
-echo "📌 Now edit the .env file and fill in your real OAuth App IDs & Secrets:"
-echo "   nano .env"
-echo "⚠️ After editing, restart with:"
-echo "   docker compose down && docker compose up -d"
-echo
+# ==============================
+# تشغيل الحاويات
+# ==============================
+sudo docker-compose down || true
+sudo docker-compose up -d
+
+# ==============================
+# إعداد Nginx كـ Reverse Proxy
+# ==============================
+sudo tee /etc/nginx/sites-available/postiz.conf > /dev/null <<EOF
+server {
+    server_name $DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        send_timeout 3600s;
+    }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/postiz.conf /etc/nginx/sites-enabled/ || true
+sudo nginx -t && sudo systemctl restart nginx
+
+# ==============================
+# تفعيل SSL عبر Let's Encrypt
+# ==============================
+sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
+
+# ==============================
+# ضبط الجدار الناري UFW
+# ==============================
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw --force enable
+
+echo "✅ تم تثبيت Postiz بنجاح على https://$DOMAIN"
