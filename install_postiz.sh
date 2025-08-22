@@ -2,62 +2,87 @@
 set -euo pipefail
 
 # ===============================
-# 🚀 سكربت تسطيب Postiz من الصفر
-# Ubuntu 24.04 + Docker + Compose
-# ===============================
-# - يمسح أي نسخة سابقة من Postiz
-# - ينزل ويثبت Postiz مع PostgreSQL + Redis
-# - ينشئ docker-compose.yml + .env
-# - يضيف متغيرات Google OAuth placeholders
+# 🚀 Script Install Postiz (Ubuntu 24.04)
 # ===============================
 
-# 📌 إعداداتك
-DOMAIN="postiz.example.com"    # غيّر هذا لدومينك
-POSTGRES_PASSWORD="StrongPass123!"   # غيّر الباسوورد
+DOMAIN="postiz.soufianeautomation.space"
+POSTGRES_PASSWORD="StrongPass123!"
 ENV_FILE=".env"
 
-echo "🚀 بدء التثبيت..."
+echo "🚀 Starting Postiz installation..."
 
-# 1) تحديث النظام وتنزيل Docker + Compose
-echo "📦 تثبيت المتطلبات (Docker & Compose)..."
+# 1) Update & Install dependencies
+echo "📦 Installing dependencies..."
+sudo apt-get remove docker docker-engine docker.io containerd runc -y || true
 sudo apt update -y
-sudo apt install -y docker.io docker-compose-plugin
+sudo apt upgrade -y
+sudo apt install -y ca-certificates curl gnupg lsb-release
+
+# 2) Setup Docker official repo
+echo "🐳 Setting up Docker repository..."
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt update -y
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
 sudo systemctl enable --now docker
 
-# 2) إزالة أي نسخة قديمة من Postiz
-echo "🧹 تنظيف أي نسخة سابقة من Postiz..."
-if [ -f docker-compose.yml ]; then
-    docker compose down -v || true
-    rm -f docker-compose.yml
-fi
-rm -f "${ENV_FILE}" docker-compose.override.yml || true
+# 3) Clean previous Postiz (if exists)
+echo "🧹 Removing any old Postiz installation..."
+docker compose down -v || true
+rm -f docker-compose.yml "${ENV_FILE}" docker-compose.override.yml || true
 docker system prune -af --volumes || true
 
-# 3) إنشاء ملف البيئة (.env)
-echo "📝 إنشاء ملف ${ENV_FILE}..."
+# 4) Create .env file
+echo "📝 Creating ${ENV_FILE}..."
 cat > "${ENV_FILE}" <<EOF
-# 🌐 الإعدادات العامة
+# 🌐 Main URL
 MAIN_URL=https://${DOMAIN}
 
-# 🗄️ إعدادات قاعدة البيانات PostgreSQL
+# 🗄️ Database
 POSTGRES_USER=postiz
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=postiz
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 
-# 🔑 سر التطبيق (توليد عشوائي)
+# 🔑 App secret
 APP_SECRET=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 48)
 
 # ☁️ Google OAuth (YouTube)
-# ضع القيم بعد إنشائها من Google Cloud Console
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_CALLBACK_URL=https://${DOMAIN}/auth/callback/google
+
+# 📘 Facebook OAuth
+FACEBOOK_CLIENT_ID=your-facebook-app-id
+FACEBOOK_CLIENT_SECRET=your-facebook-app-secret
+FACEBOOK_CALLBACK_URL=https://${DOMAIN}/auth/callback/facebook
+
+# 🐦 Twitter/X OAuth
+TWITTER_CLIENT_ID=your-twitter-client-id
+TWITTER_CLIENT_SECRET=your-twitter-client-secret
+TWITTER_CALLBACK_URL=https://${DOMAIN}/auth/callback/twitter
+
+# 💼 LinkedIn OAuth
+LINKEDIN_CLIENT_ID=your-linkedin-client-id
+LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret
+LINKEDIN_CALLBACK_URL=https://${DOMAIN}/auth/callback/linkedin
+
+# 📸 Instagram OAuth (عبر Facebook App)
+INSTAGRAM_CLIENT_ID=your-instagram-client-id
+INSTAGRAM_CLIENT_SECRET=your-instagram-client-secret
+INSTAGRAM_CALLBACK_URL=https://${DOMAIN}/auth/callback/instagram
 EOF
 
-# 4) إنشاء ملف docker-compose.yml
-echo "📝 إنشاء ملف docker-compose.yml..."
+# 5) Create docker-compose.yml
+echo "📝 Creating docker-compose.yml..."
 cat > docker-compose.yml <<'YAML'
 version: '3.9'
 
@@ -97,13 +122,15 @@ volumes:
   redis_data:
 YAML
 
-# 5) تشغيل Postiz
-echo "🚀 تشغيل Postiz..."
+# 6) Start Postiz
+echo "🚀 Starting Postiz..."
 docker compose up -d
 
-echo "✅ تم تثبيت Postiz بنجاح!"
-echo "➡️ افتح: https://${DOMAIN}"
 echo
-echo "📌 تذكير: لا تنسَ تعديل ملف .env ووضع القيم الصحيحة لمتغيرات Google OAuth:"
-echo "   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL"
+echo "✅ Postiz installed successfully!"
+echo "➡️ Go to: https://${DOMAIN}"
+echo "📌 Now edit the .env file and fill in your real OAuth App IDs & Secrets:"
+echo "   nano .env"
+echo "⚠️ After editing, restart with:"
+echo "   docker compose down && docker compose up -d"
 echo
