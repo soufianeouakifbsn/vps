@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
+# wget https://raw.githubusercontent.com/soufianeouakifbsn/vps/refs/heads/main/install_postiz.sh -O install_postiz.sh && chmod +x install_postiz.sh && ./install_postiz.sh
 # ===============================
 # 🚀 Script Install Postiz (Ubuntu 24.04)
 # ===============================
@@ -92,7 +92,7 @@ services:
     container_name: postiz
     restart: always
     ports:
-      - "3000:3000"
+      - "5000:5000"
     env_file:
       - .env
     depends_on:
