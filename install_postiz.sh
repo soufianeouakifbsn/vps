@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 
 # -----------------------------
 # تحديث النظام + تثبيت الأدوات
@@ -8,7 +7,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl git unzip nginx certbot python3-certbot-nginx docker.io docker-compose
 
 # -----------------------------
-# تحميل Postiz (مع تنظيف المجلد القديم لو موجود)
+# تحميل Postiz
 # -----------------------------
 cd /opt
 if [ -d "postiz" ]; then
@@ -31,7 +30,7 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 
 # Backend
-PORT=3000
+PORT=5000
 BACKEND_URL=https://postiz-api.soufianeautomation.space
 
 # Frontend
@@ -48,9 +47,9 @@ version: "3.8"
 services:
   backend:
     environment:
-      - PORT=3000
+      - PORT=5000
     ports:
-      - "3000:3000"
+      - "5000:5000"
 
   frontend:
     environment:
@@ -95,7 +94,7 @@ server {
     server_name postiz-api.soufianeautomation.space;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -105,19 +104,16 @@ server {
 EOF
 
 # -----------------------------
-# تنظيف أي روابط قديمة + تفعيل الجديدة
+# تفعيل الكونفيغ (مع تنظيف القديم)
 # -----------------------------
 sudo rm -f /etc/nginx/sites-enabled/postiz-frontend
 sudo rm -f /etc/nginx/sites-enabled/postiz-backend
-sudo rm -f /etc/nginx/sites-enabled/default
-
 sudo ln -s /etc/nginx/sites-available/postiz-frontend /etc/nginx/sites-enabled/
 sudo ln -s /etc/nginx/sites-available/postiz-backend /etc/nginx/sites-enabled/
-
 sudo nginx -t && sudo systemctl reload nginx
 
 # -----------------------------
-# شهادة SSL (مع --expand لتفادي التعارض)
+# شهادة SSL (مع التوسيع لو فيه قديم)
 # -----------------------------
 sudo certbot --nginx -d postiz.soufianeautomation.space -d postiz-api.soufianeautomation.space --expand --non-interactive --agree-tos -m admin@soufianeautomation.space
 
