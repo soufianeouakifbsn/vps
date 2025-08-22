@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# 📌 المتغيرات الأساسية - غيّرها حسب الدومين والبريد الخاص بك
+# 📌 المتغيرات الأساسية
 DOMAIN="postiz.soufianeautomation.space"
-EMAIL="your@email.com"   # بريدك لإدارة SSL
+EMAIL="your@email.com"
 POSTIZ_JWT_SECRET="change-this-to-a-random-string"
 
 echo "🚀 بدء تثبيت Postiz على $DOMAIN ..."
@@ -37,7 +37,7 @@ services:
       JWT_SECRET: "$POSTIZ_JWT_SECRET"
       DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
       REDIS_URL: "redis://postiz-redis:6379"
-      BACKEND_INTERNAL_URL: "http://localhost:3000"
+      BACKEND_INTERNAL_URL: "http://postiz:5000"
       IS_GENERAL: "true"
       DISABLE_REGISTRATION: "false"
       STORAGE_PROVIDER: "local"
@@ -46,8 +46,6 @@ services:
     volumes:
       - postiz-config:/config/
       - postiz-uploads:/uploads/
-    ports:
-      - 5000:5000
     networks:
       - postiz-network
     depends_on:
@@ -72,7 +70,7 @@ services:
       test: pg_isready -U postiz-user -d postiz-db-local
       interval: 10s
       timeout: 3s
-      retries: 3
+      retries: 5
 
   postiz-redis:
     image: redis:7.2
@@ -82,7 +80,7 @@ services:
       test: redis-cli ping
       interval: 10s
       timeout: 3s
-      retries: 3
+      retries: 5
     volumes:
       - postiz-redis-data:/data
     networks:
@@ -106,13 +104,17 @@ EOF
 # تشغيل Postiz عبر Docker Compose
 sudo docker compose up -d
 
+# انتظار تشغيل الحاويات الأساسية
+echo "⏳ انتظار تشغيل Postgres و Redis و Postiz ..."
+sleep 15
+
 # 🔧 إعداد Nginx كـ Reverse Proxy
 sudo tee /etc/nginx/sites-available/postiz.conf > /dev/null <<EOF
 server {
     server_name $DOMAIN;
 
     location / {
-        proxy_pass http://127.0.0.1:5000;
+        proxy_pass http://postiz:5000;
 
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -137,12 +139,12 @@ sudo nginx -t && sudo systemctl restart nginx
 # 🔒 الحصول على SSL من Let's Encrypt
 sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
 
-# فتح الجدار الناري (UFW)
+# فتح الجدار الناري
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
 
-# 🛡️ تثبيت Watchtower للتحديث التلقائي
+# 🛡️ تثبيت Watchtower لتحديث الحاويات تلقائيًا
 sudo docker stop watchtower 2>/dev/null || true
 sudo docker rm watchtower 2>/dev/null || true
 sudo docker run -d \
