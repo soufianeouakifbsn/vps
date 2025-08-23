@@ -78,17 +78,13 @@ services:
       FACEBOOK_CLIENT_SECRET: "replace-with-facebook-secret"
       INSTAGRAM_CLIENT_ID: "replace-with-instagram-client-id"
       INSTAGRAM_CLIENT_SECRET: "replace-with-instagram-secret"
-      LINKEDIN_CLIENT_ID: "78qccyidpxe68g"
-      LINKEDIN_CLIENT_SECRET: "WPL_AP1.gxtCHrFFVAdgp2IT.4Bjirw=="
-      TWITTER_CLIENT_ID: "ss"
-      TWITTER_CLIENT_SECRET: "ss"
+      LINKEDIN_CLIENT_ID: "replace-with-linkedin-client-id"
+      LINKEDIN_CLIENT_SECRET: "replace-with-linkedin-secret"
+      TWITTER_CLIENT_ID: "replace-with-twitter-client-id"
+      TWITTER_CLIENT_SECRET: "replace-with-twitter-secret"
       TIKTOK_CLIENT_ID: "replace-with-tiktok-client-id"
       TIKTOK_CLIENT_SECRET: "replace-with-tiktok-client-secret"
       OPENAI_API_KEY: "replace-with-openai-api-key"
-      TELEGRAM_BOT_NAME="@n8nchet_bot"
-      TELEGRAM_TOKEN="8183987900:AAEB8OJZaCmrwMewrqk9Z4Ve2e51IMJYrB0"
-      REDDIT_CLIENT_ID="g-gI1XviVk5DukK1IdgjOw"
-      REDDIT_CLIENT_SECRET="QlVucNLveKoLSKjPwKBNymQicZREsA"
 
     volumes:
       - postiz-config:/config/
@@ -152,9 +148,6 @@ EOL
 echo "🌐 Installing Nginx & Certbot..."
 apt install -y nginx certbot python3-certbot-nginx
 
-# ⚠️ Remove default site to avoid "Welcome to nginx"
-rm -f /etc/nginx/sites-enabled/default
-
 echo "⚙️ Configuring Nginx reverse proxy..."
 cat > /etc/nginx/sites-available/postiz <<EOF
 server {
@@ -181,13 +174,6 @@ certbot --nginx -d $DOMAIN -m $EMAIL --agree-tos --non-interactive
 # -----------------------------
 echo "🚀 Starting Postiz with Docker Compose..."
 docker compose up -d
-
-# -----------------------------
-# Restart Services for safety
-# -----------------------------
-echo "🔄 Restarting services..."
-systemctl restart nginx
-systemctl restart docker
 
 echo "✅ Installation finished!"
 echo "🌍 Access Postiz at: https://$DOMAIN"
