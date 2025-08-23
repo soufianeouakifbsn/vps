@@ -1,44 +1,61 @@
 #!/bin/bash
 
-echo "🚨 بدء إزالة كل ما يتعلق بـ Postiz..."
+# -----------------------------
+# 🧹 Uninstall Postiz & Clean Server
+# Soufiane Automation
+# -----------------------------
 
-# إيقاف الحاويات التي تحتوي على اسم postiz
-POSTIZ_CONTAINERS=$(sudo docker ps -a --filter "name=postiz" --format "{{.ID}}")
-if [ -n "$POSTIZ_CONTAINERS" ]; then
-  echo "🛑 إيقاف وحذف الحاويات:"
-  echo "$POSTIZ_CONTAINERS"
-  sudo docker stop $POSTIZ_CONTAINERS
-  sudo docker rm -f $POSTIZ_CONTAINERS
+echo "🚨 Starting Postiz removal process..."
+
+# -----------------------------
+# Stop and remove Docker containers
+# -----------------------------
+if [ -f /opt/postiz/docker-compose.yml ]; then
+    echo "🐳 Stopping and removing Docker containers..."
+    cd /opt/postiz
+    docker compose down --volumes --remove-orphans
 else
-  echo "✅ لا توجد حاويات باسم postiz قيد التشغيل."
+    echo "⚠️ docker-compose.yml not found. Skipping Docker removal."
 fi
 
-# حذف الصور التي تحتوي على postiz
-POSTIZ_IMAGES=$(sudo docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep postiz | awk '{print $2}')
-if [ -n "$POSTIZ_IMAGES" ]; then
-  echo "🗑️ حذف الصور:"
-  echo "$POSTIZ_IMAGES"
-  sudo docker rmi -f $POSTIZ_IMAGES
-else
-  echo "✅ لا توجد صور postiz."
+# -----------------------------
+# Remove Docker images related to Postiz
+# -----------------------------
+echo "🖼️ Removing Docker images for Postiz, Redis, and Postgres..."
+docker images -a | grep -E 'postiz-app|redis|postgres' | awk '{print $3}' | xargs -r docker rmi -f
+
+# -----------------------------
+# Remove Postiz directory
+# -----------------------------
+if [ -d /opt/postiz ]; then
+    echo "📂 Removing Postiz directory..."
+    sudo rm -rf /opt/postiz
 fi
 
-# حذف مجلد postiz-app
-if [ -d "/opt/postiz-app" ]; then
-  echo "🗂️ حذف مجلد /opt/postiz-app"
-  sudo rm -rf /opt/postiz-app
-else
-  echo "✅ لا يوجد مجلد /opt/postiz-app"
+# -----------------------------
+# Remove Nginx configuration & SSL
+# -----------------------------
+DOMAIN="postiz.soufianeautomation.space"
+if [ -f /etc/nginx/sites-available/postiz ]; then
+    echo "🌐 Removing Nginx configuration..."
+    sudo rm -f /etc/nginx/sites-available/postiz
+    sudo rm -f /etc/nginx/sites-enabled/postiz
+    sudo nginx -t && sudo systemctl reload nginx
 fi
 
-# حذف ملفات postiz المحتملة في أي مكان
-echo "🧹 البحث عن ملفات postiz في النظام..."
-sudo find / -type f \( -iname "*postiz*" -o -iname "docker-compose.yml" -o -iname ".env" \) -exec rm -f {} \; 2>/dev/null
+echo "🔐 Removing SSL certificate..."
+sudo certbot delete --cert-name $DOMAIN --non-interactive || echo "No cert found for $DOMAIN"
 
-# تنظيف Docker
-echo "🧼 تنظيف Docker..."
-sudo docker volume prune -f
-sudo docker network prune -f
-sudo docker system prune -f --volumes
+# -----------------------------
+# Optional cleanup
+# -----------------------------
+echo "🧹 Cleaning up unused Docker volumes..."
+docker volume prune -f
 
-echo "✅ تم مسح كل شيء متعلق بـ Postiz بنجاح!"
+echo "✅ Postiz and all related services have been removed!"
+echo "⚠️ System basic packages remain intact."
+echo "🔹 Update system and essentials commands preserved:"
+echo "sudo apt update && sudo apt upgrade -y"
+echo "sudo apt install wget -y && sudo apt-get update"
+echo "sudo apt-get upgrade -y && sudo apt install git -y"
+echo "sudo apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release"
