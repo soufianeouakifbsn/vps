@@ -60,8 +60,8 @@ LINKEDIN_CLIENT_ID=your_linkedin_app_id
 LINKEDIN_CLIENT_SECRET=your_linkedin_app_secret
 
 # --- Google (YouTube, etc) ---
-GOOGLE_CLIENT_ID=your_google_app_id
-GOOGLE_CLIENT_SECRET=your_google_app_secret
+GOOGLE_CLIENT_ID=478210438973-sbmd1ir93kifi2r0u3chk3i18fg4sj6k.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 
 # --- TikTok ---
 TIKTOK_CLIENT_ID=your_tiktok_app_id
