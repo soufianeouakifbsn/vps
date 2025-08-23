@@ -5,6 +5,8 @@
 # Soufiane Automation
 # -----------------------------
 
+set -euo pipefail
+
 # -----------------------------
 # System Prep & Update
 # -----------------------------
@@ -15,7 +17,6 @@ sudo apt install -y wget git curl gnupg lsb-release software-properties-common a
 # -----------------------------
 # 📌 Variables
 # -----------------------------
-# ⚠️ استخدم دومين جديد لتفادي limit
 DOMAIN="postiz2.soufianeautomation.space"
 EMAIL="soufianeouakifbsn@gmail.com"
 POSTIZ_DIR="/opt/postiz"
@@ -35,11 +36,14 @@ if ! command -v docker >/dev/null 2>&1; then
     sudo apt install -y docker-ce docker-ce-cli containerd.io
 fi
 
+# 🔧 تأكد من وجود docker-compose (v2.28.2)
 if ! command -v docker-compose >/dev/null 2>&1; then
+    echo "⬇️ Installing docker-compose..."
     sudo curl -L "https://github.com/docker/compose/releases/download/v2.28.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
 fi
 
+# تأكد من تشغيل docker
 sudo systemctl enable docker
 sudo systemctl start docker
 
@@ -53,7 +57,7 @@ cd $POSTIZ_DIR
 # -----------------------------
 # Create docker-compose.yml
 # -----------------------------
-echo "📝 Creating docker-compose.yml..."
+echo "📝 Creating docker-compose.yml with saved API keys..."
 cat > docker-compose.yml <<EOL
 version: '3.9'
 
@@ -75,6 +79,26 @@ services:
       STORAGE_PROVIDER: "local"
       UPLOAD_DIRECTORY: "/uploads"
       NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
+
+      GOOGLE_CLIENT_ID: "478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
+      GOOGLE_CLIENT_SECRET: "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"
+      YOUTUBE_CLIENT_ID: "478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
+      YOUTUBE_CLIENT_SECRET: "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"
+      FACEBOOK_CLIENT_ID: "replace-with-facebook-client-id"
+      FACEBOOK_CLIENT_SECRET: "replace-with-facebook-secret"
+      INSTAGRAM_CLIENT_ID: "replace-with-instagram-client-id"
+      INSTAGRAM_CLIENT_SECRET: "replace-with-instagram-secret"
+      LINKEDIN_CLIENT_ID: "78qccyidpxe68g"
+      LINKEDIN_CLIENT_SECRET: "WPL_AP1.gxtCHrFFVAdgp2IT.4Bjirw=="
+      TWITTER_CLIENT_ID: "ss"
+      TWITTER_CLIENT_SECRET: "ss"
+      TIKTOK_CLIENT_ID: "replace-with-tiktok-client-id"
+      TIKTOK_CLIENT_SECRET: "replace-with-tiktok-client-secret"
+      OPENAI_API_KEY: "replace-with-openai-api-key"
+      TELEGRAM_BOT_NAME: "@n8nchet_bot"
+      TELEGRAM_TOKEN: "8183987900:AAEB8OJZaCmrwMewrqk9Z4Ve2e51IMJYrB0"
+      REDDIT_CLIENT_ID: "g-gI1XviVk5DukK1IdgjOw"
+      REDDIT_CLIENT_SECRET: "QlVucNLveKoLSKjPwKBNymQicZREsA"
 
     volumes:
       - postiz-config:/config/
@@ -163,6 +187,9 @@ sudo certbot --nginx -d $DOMAIN -m $EMAIL --agree-tos --non-interactive --redire
 # Start Postiz
 # -----------------------------
 echo "🚀 Starting Postiz with Docker Compose..."
+docker-compose --version || { echo "❌ docker-compose not installed correctly!"; exit 1; }
+
+cd $POSTIZ_DIR
 sudo docker-compose up -d
 
 echo "✅ Installation finished!"
