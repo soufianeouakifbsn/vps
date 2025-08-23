@@ -32,7 +32,7 @@ JWT_SECRET=$(openssl rand -hex 32)
 # ==============================
 DATABASE_URL=postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local
 REDIS_URL=redis://postiz-redis:6379
-BACKEND_INTERNAL_URL=http://localhost:5000
+BACKEND_INTERNAL_URL=http://localhost:3000
 IS_GENERAL=true
 DISABLE_REGISTRATION=false
 STORAGE_PROVIDER=local
@@ -60,8 +60,8 @@ LINKEDIN_CLIENT_ID=your_linkedin_app_id
 LINKEDIN_CLIENT_SECRET=your_linkedin_app_secret
 
 # --- Google (YouTube, etc) ---
-GOOGLE_CLIENT_ID=478210438973-sbmd1ir93kifi2r0u3chk3i18fg4sj6k.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_ID=478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 
 # --- TikTok ---
 TIKTOK_CLIENT_ID=your_tiktok_app_id
