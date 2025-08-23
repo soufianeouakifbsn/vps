@@ -72,8 +72,8 @@ services:
       # ------------------------
       GOOGLE_CLIENT_ID: "478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
       GOOGLE_CLIENT_SECRET: "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"
-      YOUTUBE_CLIENT_ID: "replace-with-youtube-client.apps.googleusercontent.com"
-      YOUTUBE_CLIENT_SECRET: "replace-with-youtube-secret"
+      YOUTUBE_CLIENT_ID: "478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
+      YOUTUBE_CLIENT_SECRET: "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"
       FACEBOOK_CLIENT_ID: "replace-with-facebook-client-id"
       FACEBOOK_CLIENT_SECRET: "replace-with-facebook-secret"
       INSTAGRAM_CLIENT_ID: "replace-with-instagram-client-id"
