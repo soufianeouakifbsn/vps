@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # -----------------------------
-# 🚀 Smart Install Postiz on Ubuntu 24.04
+# 🚀 Install Postiz on Ubuntu 24.04
 # Soufiane Automation
 # -----------------------------
 
@@ -10,42 +10,6 @@ DOMAIN="postiz.soufianeautomation.space"
 EMAIL="soufianeouakifbsn@gmail.com"
 POSTIZ_DIR="/opt/postiz"
 JWT_SECRET=$(openssl rand -hex 32)
-
-# Social Credentials (replace these with actual keys)
-declare -A SOCIAL_KEYS=(
-  ["GOOGLE_CLIENT_ID"]="478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
-  ["GOOGLE_CLIENT_SECRET"]="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"
-  ["YOUTUBE_CLIENT_ID"]="replace-with-youtube-client.apps.googleusercontent.com"
-  ["YOUTUBE_CLIENT_SECRET"]="replace-with-youtube-secret"
-  ["FACEBOOK_CLIENT_ID"]="replace-with-facebook-client-id"
-  ["FACEBOOK_CLIENT_SECRET"]="replace-with-facebook-secret"
-  ["INSTAGRAM_CLIENT_ID"]="replace-with-instagram-client-id"
-  ["INSTAGRAM_CLIENT_SECRET"]="replace-with-instagram-secret"
-  ["LINKEDIN_CLIENT_ID"]="replace-with-linkedin-client-id"
-  ["LINKEDIN_CLIENT_SECRET"]="replace-with-linkedin-secret"
-  ["TWITTER_CLIENT_ID"]="replace-with-twitter-client-id"
-  ["TWITTER_CLIENT_SECRET"]="replace-with-twitter-secret"
-  ["TIKTOK_CLIENT_ID"]="replace-with-tiktok-client-id"
-  ["TIKTOK_CLIENT_SECRET"]="replace-with-tiktok-client-secret"
-  ["OPENAI_API_KEY"]="replace-with-openai-api-key"
-)
-
-# -----------------------------
-# Function: Check credentials
-# -----------------------------
-echo "🔍 Checking social credentials..."
-for key in "${!SOCIAL_KEYS[@]}"; do
-  value="${SOCIAL_KEYS[$key]}"
-  if [[ "$value" == replace-with* ]]; then
-    echo "❌ ERROR: $key is not set. Please replace it with your actual API key/secret."
-    missing=true
-  fi
-done
-
-if [ "$missing" = true ]; then
-  echo "⚠️ One or more credentials are missing. Fix them in the script before proceeding."
-  exit 1
-fi
 
 # -----------------------------
 # System Update
@@ -59,6 +23,7 @@ apt update -y && apt upgrade -y
 echo "🐳 Installing Docker & Docker Compose..."
 apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
 
+# Docker repo
 if ! command -v docker >/dev/null 2>&1; then
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
@@ -74,6 +39,7 @@ systemctl start docker
 # -----------------------------
 # Create Postiz directory
 # -----------------------------
+echo "📂 Creating Postiz directory..."
 mkdir -p $POSTIZ_DIR
 cd $POSTIZ_DIR
 
@@ -100,14 +66,25 @@ services:
       STORAGE_PROVIDER: "local"
       UPLOAD_DIRECTORY: "/uploads"
       NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
-EOL
 
-# Append social credentials
-for key in "${!SOCIAL_KEYS[@]}"; do
-  echo "      $key: \"${SOCIAL_KEYS[$key]}\"" >> docker-compose.yml
-done
-
-cat >> docker-compose.yml <<'EOL'
+      # ------------------------
+      # Social App Credentials (replace with your values)
+      # ------------------------
+      GOOGLE_CLIENT_ID: "478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
+      GOOGLE_CLIENT_SECRET: "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"
+      YOUTUBE_CLIENT_ID: "replace-with-youtube-client.apps.googleusercontent.com"
+      YOUTUBE_CLIENT_SECRET: "replace-with-youtube-secret"
+      FACEBOOK_CLIENT_ID: "replace-with-facebook-client-id"
+      FACEBOOK_CLIENT_SECRET: "replace-with-facebook-secret"
+      INSTAGRAM_CLIENT_ID: "replace-with-instagram-client-id"
+      INSTAGRAM_CLIENT_SECRET: "replace-with-instagram-secret"
+      LINKEDIN_CLIENT_ID: "replace-with-linkedin-client-id"
+      LINKEDIN_CLIENT_SECRET: "replace-with-linkedin-secret"
+      TWITTER_CLIENT_ID: "replace-with-twitter-client-id"
+      TWITTER_CLIENT_SECRET: "replace-with-twitter-secret"
+      TIKTOK_CLIENT_ID: "replace-with-tiktok-client-id"
+      TIKTOK_CLIENT_SECRET: "replace-with-tiktok-client-secret"
+      OPENAI_API_KEY: "replace-with-openai-api-key"
 
     volumes:
       - postiz-config:/config/
@@ -200,3 +177,4 @@ docker compose up -d
 
 echo "✅ Installation finished!"
 echo "🌍 Access Postiz at: https://$DOMAIN"
+echo "⚠️ Reminder: Edit docker-compose.yml and replace all 'replace-with-...' values with your actual API keys before using social integrations."
