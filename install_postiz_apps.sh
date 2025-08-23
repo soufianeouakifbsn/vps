@@ -28,8 +28,8 @@ cd $POSTIZ_DIR || { echo "❌ Directory $POSTIZ_DIR not found"; exit 1; }
 # Replace these with your new credentials
 update_credential "LINKEDIN_CLIENT_ID" "new-linkedin-client-id"
 update_credential "LINKEDIN_CLIENT_SECRET" "new-linkedin-client-secret"
-update_credential "REDDIT_CLIENT_ID" "new-reddit-client-id"
-update_credential "REDDIT_CLIENT_SECRET" "new-reddit-client-secret"
+update_credential "REDDIT_CLIENT_ID" "g-gI1XviVk5DukK1IdgjOw"
+update_credential "REDDIT_CLIENT_SECRET" "QlVucNLveKoLSKjPwKBNymQicZREsA"
 update_credential "TELEGRAM_TOKEN" "new-telegram-token"
 
 # -----------------------------
