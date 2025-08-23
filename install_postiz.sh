@@ -87,6 +87,8 @@ services:
       OPENAI_API_KEY: "replace-with-openai-api-key"
       TELEGRAM_BOT_NAME="@n8nchet_bot"
       TELEGRAM_TOKEN="8183987900:AAEB8OJZaCmrwMewrqk9Z4Ve2e51IMJYrB0"
+      REDDIT_CLIENT_ID="g-gI1XviVk5DukK1IdgjOw"
+      REDDIT_CLIENT_SECRET="QlVucNLveKoLSKjPwKBNymQicZREsA"
 
     volumes:
       - postiz-config:/config/
