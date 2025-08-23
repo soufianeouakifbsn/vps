@@ -50,7 +50,7 @@ services:
       JWT_SECRET: "$JWT_SECRET"
       DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
       REDIS_URL: "redis://postiz-redis:6379"
-      BACKEND_INTERNAL_URL: "http://localhost:3000"
+      BACKEND_INTERNAL_URL: "http://localhost:5000"
       IS_GENERAL: "true"
       DISABLE_REGISTRATION: "false"
       STORAGE_PROVIDER: "local"
