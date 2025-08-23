@@ -1,50 +1,58 @@
 #!/bin/bash
 
+# -----------------------------
+# 🚀 Install Postiz on Ubuntu 24.04
+# Soufiane Automation
+# -----------------------------
+
 # 📌 Variables
-DOMAIN="postiz.soufianeautomation.space" # Replace with your domain
-EMAIL="you@example.com"          # Replace with your email for SSL management
+DOMAIN="postiz.soufianeautomation.space"
+EMAIL="soufianeouakifbsn@gmail.com"
+POSTIZ_DIR="/opt/postiz"
+JWT_SECRET=$(openssl rand -hex 32)
 
-echo "🚀 Starting Postiz installation on $DOMAIN..."
+echo "📦 Updating system..."
+apt update -y && apt upgrade -y
 
-# --- 1. System Prerequisites ---
-echo "⚙️  Updating system packages and installing prerequisites..."
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw
+echo "🐳 Installing Docker & Docker Compose..."
+apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
 
-# Enable and start Docker
-sudo systemctl enable docker
-sudo systemctl start docker
+# Docker repo
+if ! command -v docker >/dev/null 2>&1; then
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
+  https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  apt update -y
+  apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+fi
 
-# --- 2. Postiz Docker Compose Setup ---
-echo "🐳 Configuring and running Postiz with Docker Compose..."
+systemctl enable docker
+systemctl start docker
 
-# Create a directory for Postiz files
-mkdir -p ~/postiz_data
-cd ~/postiz_data
+echo "📂 Creating Postiz directory..."
+mkdir -p $POSTIZ_DIR
+cd $POSTIZ_DIR
 
-# Create the docker-compose.yml file
-sudo tee docker-compose.yml > /dev/null <<EOF
+echo "📝 Creating docker-compose.yml..."
+cat > docker-compose.yml <<EOL
+version: '3.9'
+
 services:
   postiz:
     image: ghcr.io/gitroomhq/postiz-app:latest
     container_name: postiz
     restart: always
     environment:
-      # You must change these. Replace your-server.com with your DNS name - this needs to be exactly the URL you're accessing Postiz on.
       MAIN_URL: "https://$DOMAIN"
       FRONTEND_URL: "https://$DOMAIN"
       NEXT_PUBLIC_BACKEND_URL: "https://$DOMAIN/api"
-      JWT_SECRET: "random_string_that_is_unique_to_every_install_change_me"
- 
-      # These defaults are probably fine, but if you change your user/password, update it in the
-      # postiz-postgres or postiz-redis services below.
+      JWT_SECRET: "$JWT_SECRET"
       DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
       REDIS_URL: "redis://postiz-redis:6379"
       BACKEND_INTERNAL_URL: "http://localhost:3000"
-      IS_GENERAL: "true" # Required for self-hosting.
-      DISABLE_REGISTRATION: "false" # Only allow single registration, then disable signup
-      # The container images are pre-configured to use /uploads for file storage.
-      # You probably should not change this unless you have a really good reason!
+      IS_GENERAL: "true"
+      DISABLE_REGISTRATION: "false"
       STORAGE_PROVIDER: "local"
       UPLOAD_DIRECTORY: "/uploads"
       NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
@@ -60,7 +68,7 @@ services:
         condition: service_healthy
       postiz-redis:
         condition: service_healthy
- 
+
   postiz-postgres:
     image: postgres:17-alpine
     container_name: postiz-postgres
@@ -74,16 +82,18 @@ services:
     networks:
       - postiz-network
     healthcheck:
-      test: pg_isready -U postiz-user -d postiz-db-local
+      test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
       interval: 10s
       timeout: 3s
       retries: 3
+
   postiz-redis:
     image: redis:7.2
     container_name: postiz-redis
     restart: always
+    command: ["redis-server", "--appendonly", "yes"]
     healthcheck:
-      test: redis-cli ping
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -91,65 +101,43 @@ services:
       - postiz-redis-data:/data
     networks:
       - postiz-network
- 
- 
+
 volumes:
   postgres-volume:
-    external: false
- 
   postiz-redis-data:
-    external: false
- 
   postiz-config:
-    external: false
- 
   postiz-uploads:
-    external: false
- 
+
 networks:
   postiz-network:
-    external: false
-EOF
+EOL
 
-# Start the services
-sudo docker-compose up -d
+echo "🌐 Installing Nginx & Certbot..."
+apt install -y nginx certbot python3-certbot-nginx
 
-# --- 3. Nginx Reverse Proxy & SSL Setup ---
-echo "🌐 Setting up Nginx as a reverse proxy and obtaining SSL certificate..."
-
-# Create Nginx configuration file
-sudo tee /etc/nginx/sites-available/postiz.conf > /dev/null <<EOF
+echo "⚙️ Configuring Nginx reverse proxy..."
+cat > /etc/nginx/sites-available/postiz <<EOF
 server {
     server_name $DOMAIN;
 
     location / {
-        proxy_pass http://localhost:5000;
+        proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-
-        # WebSocket support
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
     }
 }
 EOF
 
-# Enable the site and restart Nginx
-sudo ln -s /etc/nginx/sites-available/postiz.conf /etc/nginx/sites-enabled/ || true
-sudo nginx -t && sudo systemctl restart nginx
+ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
 
-# Obtain SSL certificate
-sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
+echo "🔐 Installing SSL certificate..."
+certbot --nginx -d $DOMAIN -m $EMAIL --agree-tos --non-interactive
 
-# --- 4. Firewall Configuration ---
-echo "🛡️  Configuring the UFW firewall..."
-sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
-sudo ufw --force enable
+echo "🚀 Starting Postiz with Docker Compose..."
+docker compose up -d
 
-echo "✅ Postiz has been installed successfully!"
-echo "🎉 You can now access the web interface at https://$DOMAIN"
-echo "🔧 If you encounter issues, check the Docker logs with: sudo docker-compose logs"
+echo "✅ Installation finished!"
+echo "🌍 Access Postiz at: https://$DOMAIN"
