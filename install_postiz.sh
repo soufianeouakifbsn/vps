@@ -48,29 +48,16 @@ cd $POSTIZ_DIR
 # -----------------------------
 echo "📝 Creating docker-compose.yml..."
 cat > docker-compose.yml <<EOL
-version: '3.9'
-
 services:
   postiz:
     image: ghcr.io/gitroomhq/postiz-app:latest
     container_name: postiz
     restart: always
     environment:
-      # ------------------------
-      # General URLs
-      # ------------------------
       MAIN_URL: "https://$DOMAIN"
       FRONTEND_URL: "https://$DOMAIN"
       NEXT_PUBLIC_BACKEND_URL: "https://$DOMAIN/api"
-
-      # ------------------------
-      # Secrets
-      # ------------------------
       JWT_SECRET: "$JWT_SECRET"
-
-      # ------------------------
-      # Database & Cache
-      # ------------------------
       DATABASE_URL: "postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local"
       REDIS_URL: "redis://postiz-redis:6379"
       BACKEND_INTERNAL_URL: "http://localhost:5000"
@@ -96,7 +83,7 @@ services:
       TWITTER_CLIENT_ID: "replace-with-twitter-client-id"
       TWITTER_CLIENT_SECRET: "replace-with-twitter-secret"
       TIKTOK_CLIENT_ID: "replace-with-tiktok-client-id"
-      TIKTOK_CLIENT_SECRET: "replace-with-tiktok-secret"
+      TIKTOK_CLIENT_SECRET: "replace-with-tiktok-client-secret"
       OPENAI_API_KEY: "replace-with-openai-api-key"
 
     volumes:
