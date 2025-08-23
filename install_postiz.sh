@@ -80,11 +80,13 @@ services:
       INSTAGRAM_CLIENT_SECRET: "replace-with-instagram-secret"
       LINKEDIN_CLIENT_ID: "78qccyidpxe68g"
       LINKEDIN_CLIENT_SECRET: "WPL_AP1.gxtCHrFFVAdgp2IT.4Bjirw=="
-      TWITTER_CLIENT_ID: "replace-with-twitter-client-id"
-      TWITTER_CLIENT_SECRET: "replace-with-twitter-secret"
+      TWITTER_CLIENT_ID: "ss"
+      TWITTER_CLIENT_SECRET: "ss"
       TIKTOK_CLIENT_ID: "replace-with-tiktok-client-id"
       TIKTOK_CLIENT_SECRET: "replace-with-tiktok-client-secret"
       OPENAI_API_KEY: "replace-with-openai-api-key"
+      TELEGRAM_BOT_NAME="@n8nchet_bot"
+      TELEGRAM_TOKEN="8183987900:AAEB8OJZaCmrwMewrqk9Z4Ve2e51IMJYrB0"
 
     volumes:
       - postiz-config:/config/
