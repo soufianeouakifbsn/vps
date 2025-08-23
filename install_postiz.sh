@@ -1,66 +1,53 @@
 #!/bin/bash
 
 # -----------------------------
-# 🚀 Install Postiz on Ubuntu 22.04
+# 🚀 Install Postiz on Ubuntu 24.04
 # Soufiane Automation
 # -----------------------------
 
-set -euo pipefail
-
-# -----------------------------
-# System Prep & Update
-# -----------------------------
-echo "📦 Updating system and installing essentials..."
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y wget git curl gnupg lsb-release software-properties-common apt-transport-https ca-certificates
-
-# -----------------------------
 # 📌 Variables
-# -----------------------------
-DOMAIN="postiz2.soufianeautomation.space"
+DOMAIN="postiz.soufianeautomation.space"
 EMAIL="soufianeouakifbsn@gmail.com"
 POSTIZ_DIR="/opt/postiz"
 JWT_SECRET=$(openssl rand -hex 32)
 
 # -----------------------------
+# System Update
+# -----------------------------
+echo "📦 Updating system..."
+apt update -y && apt upgrade -y
+
+# -----------------------------
 # Install Docker & Docker Compose
 # -----------------------------
 echo "🐳 Installing Docker & Docker Compose..."
+apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
+
+# Docker repo
 if ! command -v docker >/dev/null 2>&1; then
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
-    https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-    | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-    sudo apt update -y
-    sudo apt install -y docker-ce docker-ce-cli containerd.io
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
+  https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+  | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  apt update -y
+  apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
 
-# 🔧 تأكد من وجود docker-compose (v2.28.2)
-if ! command -v docker-compose >/dev/null 2>&1; then
-    echo "⬇️ Installing docker-compose..."
-    sudo curl -L "https://github.com/docker/compose/releases/download/v2.28.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
-fi
-
-# تأكد من تشغيل docker
-sudo systemctl enable docker
-sudo systemctl start docker
+systemctl enable docker
+systemctl start docker
 
 # -----------------------------
 # Create Postiz directory
 # -----------------------------
 echo "📂 Creating Postiz directory..."
-sudo mkdir -p $POSTIZ_DIR
+mkdir -p $POSTIZ_DIR
 cd $POSTIZ_DIR
 
 # -----------------------------
 # Create docker-compose.yml
 # -----------------------------
-echo "📝 Creating docker-compose.yml with saved API keys..."
+echo "📝 Creating docker-compose.yml..."
 cat > docker-compose.yml <<EOL
-version: '3.9'
-
 services:
   postiz:
     image: ghcr.io/gitroomhq/postiz-app:latest
@@ -80,6 +67,9 @@ services:
       UPLOAD_DIRECTORY: "/uploads"
       NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
 
+      # ------------------------
+      # Social App Credentials (replace with your values)
+      # ------------------------
       GOOGLE_CLIENT_ID: "478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
       GOOGLE_CLIENT_SECRET: "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"
       YOUTUBE_CLIENT_ID: "478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
@@ -95,10 +85,10 @@ services:
       TIKTOK_CLIENT_ID: "replace-with-tiktok-client-id"
       TIKTOK_CLIENT_SECRET: "replace-with-tiktok-client-secret"
       OPENAI_API_KEY: "replace-with-openai-api-key"
-      TELEGRAM_BOT_NAME: "@n8nchet_bot"
-      TELEGRAM_TOKEN: "8183987900:AAEB8OJZaCmrwMewrqk9Z4Ve2e51IMJYrB0"
-      REDDIT_CLIENT_ID: "g-gI1XviVk5DukK1IdgjOw"
-      REDDIT_CLIENT_SECRET: "QlVucNLveKoLSKjPwKBNymQicZREsA"
+      TELEGRAM_BOT_NAME="@n8nchet_bot"
+      TELEGRAM_TOKEN="8183987900:AAEB8OJZaCmrwMewrqk9Z4Ve2e51IMJYrB0"
+      REDDIT_CLIENT_ID="g-gI1XviVk5DukK1IdgjOw"
+      REDDIT_CLIENT_SECRET="QlVucNLveKoLSKjPwKBNymQicZREsA"
 
     volumes:
       - postiz-config:/config/
@@ -129,7 +119,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
       interval: 10s
       timeout: 3s
-      retries: 5
+      retries: 3
 
   postiz-redis:
     image: redis:7.2
@@ -140,7 +130,7 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
-      retries: 5
+      retries: 3
     volumes:
       - postiz-redis-data:/data
     networks:
@@ -160,7 +150,7 @@ EOL
 # Nginx & SSL
 # -----------------------------
 echo "🌐 Installing Nginx & Certbot..."
-sudo apt install -y nginx certbot python3-certbot-nginx
+apt install -y nginx certbot python3-certbot-nginx
 
 echo "⚙️ Configuring Nginx reverse proxy..."
 cat > /etc/nginx/sites-available/postiz <<EOF
@@ -177,20 +167,18 @@ server {
 }
 EOF
 
-sudo ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
 
 echo "🔐 Installing SSL certificate..."
-sudo certbot --nginx -d $DOMAIN -m $EMAIL --agree-tos --non-interactive --redirect
+certbot --nginx -d $DOMAIN -m $EMAIL --agree-tos --non-interactive
 
 # -----------------------------
 # Start Postiz
 # -----------------------------
 echo "🚀 Starting Postiz with Docker Compose..."
-docker-compose --version || { echo "❌ docker-compose not installed correctly!"; exit 1; }
-
-cd $POSTIZ_DIR
-sudo docker-compose up -d
+docker compose up -d
 
 echo "✅ Installation finished!"
 echo "🌍 Access Postiz at: https://$DOMAIN"
+echo "⚠️ Reminder: Edit docker-compose.yml and replace all 'replace-with-...' values with your actual API keys before using social integrations."
