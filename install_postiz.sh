@@ -1,15 +1,9 @@
 #!/bin/bash
 
 # -----------------------------
-# 🚀 Install Postiz on Ubuntu 24.04
+# 🚀 Install Postiz on Ubuntu 24.04 (works on 22.04)
 # Soufiane Automation
 # -----------------------------
-
-echo "📦 Updating system and installing essentials..."
-sudo apt update && sudo apt upgrade -y
-sudo apt install wget -y && sudo apt-get update
-sudo apt-get upgrade -y && sudo apt install git -y
-
 
 # 📌 Variables
 DOMAIN="postiz2.soufianeautomation.space"
@@ -21,33 +15,33 @@ JWT_SECRET=$(openssl rand -hex 32)
 # System Update
 # -----------------------------
 echo "📦 Updating system..."
-apt update -y && apt upgrade -y
+sudo apt update -y && sudo apt upgrade -y
 
 # -----------------------------
 # Install Docker & Docker Compose
 # -----------------------------
 echo "🐳 Installing Docker & Docker Compose..."
-apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
 
 # Docker repo
 if ! command -v docker >/dev/null 2>&1; then
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
   https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-  | tee /etc/apt/sources.list.d/docker.list > /dev/null
-  apt update -y
-  apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  sudo apt update -y
+  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
 
-systemctl enable docker
-systemctl start docker
+sudo systemctl enable docker
+sudo systemctl start docker
 
 # -----------------------------
 # Create Postiz directory
 # -----------------------------
 echo "📂 Creating Postiz directory..."
-mkdir -p $POSTIZ_DIR
-cd $POSTIZ_DIR
+sudo mkdir -p "$POSTIZ_DIR"
+cd "$POSTIZ_DIR"
 
 # -----------------------------
 # Create docker-compose.yml
@@ -74,7 +68,7 @@ services:
       NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
 
       # ------------------------
-      # Social App Credentials (replace with your values)
+      # Social App Credentials (kept as provided)
       # ------------------------
       GOOGLE_CLIENT_ID: "478210438973-c22oehbp2gnj5kjatpd04jitjkqds40c.apps.googleusercontent.com"
       GOOGLE_CLIENT_SECRET: "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"
@@ -91,10 +85,10 @@ services:
       TIKTOK_CLIENT_ID: "replace-with-tiktok-client-id"
       TIKTOK_CLIENT_SECRET: "replace-with-tiktok-client-secret"
       OPENAI_API_KEY: "replace-with-openai-api-key"
-      TELEGRAM_BOT_NAME="@n8nchet_bot"
-      TELEGRAM_TOKEN="8183987900:AAEB8OJZaCmrwMewrqk9Z4Ve2e51IMJYrB0"
-      REDDIT_CLIENT_ID="g-gI1XviVk5DukK1IdgjOw"
-      REDDIT_CLIENT_SECRET="QlVucNLveKoLSKjPwKBNymQicZREsA"
+      TELEGRAM_BOT_NAME: "@n8nchet_bot"
+      TELEGRAM_TOKEN: "8183987900:AAEB8OJZaCmrwMewrqk9Z4Ve2e51IMJYrB0"
+      REDDIT_CLIENT_ID: "g-gI1XviVk5DukK1IdgjOw"
+      REDDIT_CLIENT_SECRET: "QlVucNLveKoLSKjPwKBNymQicZREsA"
 
     volumes:
       - postiz-config:/config/
@@ -156,35 +150,35 @@ EOL
 # Nginx & SSL
 # -----------------------------
 echo "🌐 Installing Nginx & Certbot..."
-apt install -y nginx certbot python3-certbot-nginx
+sudo apt install -y nginx certbot python3-certbot-nginx
 
 echo "⚙️ Configuring Nginx reverse proxy..."
-cat > /etc/nginx/sites-available/postiz <<EOF
+sudo bash -c "cat > /etc/nginx/sites-available/postiz" <<'EOF'
 server {
-    server_name $DOMAIN;
+    server_name '"$DOMAIN"';
 
     location / {
         proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
+sudo ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 
 echo "🔐 Installing SSL certificate..."
-certbot --nginx -d $DOMAIN -m $EMAIL --agree-tos --non-interactive
+sudo certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos --non-interactive
 
 # -----------------------------
 # Start Postiz
 # -----------------------------
 echo "🚀 Starting Postiz with Docker Compose..."
-docker compose up -d
+sudo docker compose up -d
 
 echo "✅ Installation finished!"
 echo "🌍 Access Postiz at: https://$DOMAIN"
-echo "⚠️ Reminder: Edit docker-compose.yml and replace all 'replace-with-...' values with your actual API keys before using social integrations."
+echo "ℹ️ You can edit DOMAIN/EMAIL at the top if needed."
