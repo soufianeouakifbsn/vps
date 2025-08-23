@@ -5,44 +5,42 @@
 # Soufiane Automation
 # -----------------------------
 
-# -----------------------------
-# System Prep & Update
-# -----------------------------
-echo "📦 Updating system and installing essentials..."
-sudo apt update && sudo apt upgrade -y
-sudo apt install wget -y && sudo apt-get update
-sudo apt-get upgrade -y && sudo apt install git -y
-sudo apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
-
-# -----------------------------
 # 📌 Variables
-# -----------------------------
 DOMAIN="postiz.soufianeautomation.space"
 EMAIL="soufianeouakifbsn@gmail.com"
 POSTIZ_DIR="/opt/postiz"
 JWT_SECRET=$(openssl rand -hex 32)
 
 # -----------------------------
+# System Update
+# -----------------------------
+echo "📦 Updating system..."
+apt update -y && apt upgrade -y
+
+# -----------------------------
 # Install Docker & Docker Compose
 # -----------------------------
 echo "🐳 Installing Docker & Docker Compose..."
+apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
+
+# Docker repo
 if ! command -v docker >/dev/null 2>&1; then
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
   https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  sudo apt update -y
-  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  apt update -y
+  apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
 
-sudo systemctl enable docker
-sudo systemctl start docker
+systemctl enable docker
+systemctl start docker
 
 # -----------------------------
 # Create Postiz directory
 # -----------------------------
 echo "📂 Creating Postiz directory..."
-sudo mkdir -p $POSTIZ_DIR
+mkdir -p $POSTIZ_DIR
 cd $POSTIZ_DIR
 
 # -----------------------------
@@ -152,7 +150,7 @@ EOL
 # Nginx & SSL
 # -----------------------------
 echo "🌐 Installing Nginx & Certbot..."
-sudo apt install -y nginx certbot python3-certbot-nginx
+apt install -y nginx certbot python3-certbot-nginx
 
 echo "⚙️ Configuring Nginx reverse proxy..."
 cat > /etc/nginx/sites-available/postiz <<EOF
@@ -169,11 +167,11 @@ server {
 }
 EOF
 
-sudo ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
 
 echo "🔐 Installing SSL certificate..."
-sudo certbot --nginx -d $DOMAIN -m $EMAIL --agree-tos --non-interactive
+certbot --nginx -d $DOMAIN -m $EMAIL --agree-tos --non-interactive
 
 # -----------------------------
 # Start Postiz
