@@ -35,7 +35,7 @@ fi
 # -----------------------------
 # Remove Nginx configuration & SSL
 # -----------------------------
-DOMAIN="postiz.soufianeautomation.space"
+DOMAIN="postiz2.soufianeautomation.space"
 if [ -f /etc/nginx/sites-available/postiz ]; then
     echo "🌐 Removing Nginx configuration..."
     sudo rm -f /etc/nginx/sites-available/postiz
