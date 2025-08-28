@@ -62,4 +62,4 @@ systemctl restart hysteria
 # ✅ معلومات الاتصال
 echo -e "\n🎉 Hysteria2 Installed Successfully!\n"
 echo "🔑 Import this into your client (Hysteria2 / Clash / NekoBox):"
-echo "hysteria2://$PASSWORD@$DOMAIN:$PORT/?insecure=1&sni=$DOMAIN#Soufiane-Hysteria2"
+echo "hysteria2://$PASSWORD@$DOMAIN:$PORT/?insecure=1&sni=api.snapchat.com#Soufiane-Hysteria2"
