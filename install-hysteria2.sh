@@ -5,7 +5,7 @@
 # Soufiane Automation
 # ---------------------------------------
 
-DOMAIN="udp.soufianeautomation.space"   # ضع هنا دومين أو IP السيرفر
+DOMAIN="75.119.153.33"   # ضع هنا دومين أو IP السيرفر
 PORT=443
 PASSWORD=$(openssl rand -hex 16)
 CONFIG_DIR="/etc/hysteria"
