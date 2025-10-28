@@ -3,8 +3,8 @@
 set -e
 
 # 📌 المتغيرات
-DOMAIN="n8n.soufianeautomation.space"   # غيّر حسب الدومين الخاص بك
-EMAIL="soufianeouakifbsn@gmail.com"     # البريد لإصدار SSL
+DOMAIN="n8n.soufianeautomation.space"  
+EMAIL="soufianeouakifbsn@gmail.com"  
 
 echo "🚀 بدء تثبيت n8n مخصص على $DOMAIN ..."
 
@@ -14,7 +14,7 @@ sudo apt update && sudo apt upgrade -y
 # تثبيت الأدوات الأساسية
 sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx ufw git build-essential
 
-# 🔐 فتح الجدار الناري
+# 🔐 إعداد الجدار الناري
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
@@ -23,29 +23,29 @@ sudo ufw --force enable
 sudo systemctl enable docker
 sudo systemctl start docker
 
-# 🧹 حذف أي حاوية n8n قديمة
+# 🐳 حذف أي حاوية n8n قديمة
 sudo docker stop n8n 2>/dev/null || true
 sudo docker rm n8n 2>/dev/null || true
 
-# إنشاء مجلد بيانات n8n دائم
+# إنشاء مجلد بيانات دائم
 mkdir -p ~/n8n_data
 sudo chown -R 1000:1000 ~/n8n_data
 
-# 🐳 إنشاء مجلد لبناء Dockerfile مخصص
+# إنشاء مجلد لبناء Dockerfile
 BUILD_DIR=~/n8n_docker_build
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
-# 🔧 إنشاء Dockerfile لمستخدمي Debian-based n8n مع pdftk وzip
+# إنشاء Dockerfile مخصص (Debian-based)
 cat > Dockerfile <<EOF
-FROM n8nio/n8n:latest
+FROM n8nio/n8n:0.247.0
 
 USER root
 RUN apt update && apt install -y pdftk zip
 USER node
 EOF
 
-# بناء الصورة المخصصة
+# بناء الصورة
 docker build -t n8n-custom:latest .
 
 # تشغيل الحاوية المخصصة
@@ -59,7 +59,7 @@ sudo docker run -d --name n8n \
   --restart unless-stopped \
   n8n-custom:latest
 
-# إعداد Nginx كـ Reverse Proxy
+# إعداد Nginx
 sudo tee /etc/nginx/sites-available/n8n.conf > /dev/null <<NGINXCONF
 server {
     listen 80;
@@ -93,7 +93,7 @@ sudo systemctl reload nginx
 # إصدار SSL تلقائي
 sudo certbot --nginx -d "$DOMAIN" --redirect --non-interactive --agree-tos -m "$EMAIL"
 
-# تثبيت Watchtower للتحديث التلقائي
+# تثبيت Watchtower
 sudo docker stop watchtower 2>/dev/null || true
 sudo docker rm watchtower 2>/dev/null || true
 sudo docker run -d \
@@ -101,5 +101,4 @@ sudo docker run -d \
   -v /var/run/docker.sock:/var/run/docker.sock \
   containrrr/watchtower n8n --cleanup --interval 3600
 
-echo "✅ تم تثبيت n8n مخصص على https://$DOMAIN"
-echo "🎉 الآن يمكنك استخدام Workflow تقسيم PDF مباشرة داخل الحاوية."
+echo "✅ تم تثبيت n8n مخصص على https://$DOMAIN مع pdftk وzip جاهزين للتقسيم"
